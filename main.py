@@ -26,29 +26,28 @@ from torch.multiprocessing import Process, Pipe, Manager
 import threading
 from core.buffer import Buffer
 from core.genealogy import Genealogy
-import gym
 import argparse
 
 
-
+ENV_NAME = ''
+ALGO='TD3'
+ISOLATE_PG=False
 parser = argparse.ArgumentParser()
 parser.add_argument('-pop_size', type=int, help='#Policies in the population',  default=10)
 parser.add_argument('-seed', type=int, help='Seed',  default=2018)
 parser.add_argument('-rollout_size', type=int, help='#Policies in rolout size',  default=10)
-parser.add_argument('-env', type=str, help='#Environment name',  default='Humanoid-v2')
 parser.add_argument('-gradperstep', type=float, help='#Gradient step per env step',  default=1.0)
 parser.add_argument('-savetag', type=str, help='#Tag to append to savefile',  default='')
 parser.add_argument('-gpu_id', type=int, help='#GPU ID ',  default=0)
 parser.add_argument('-buffer_gpu', type=str2bool, help='#Store buffer in GPU?',  default=0)
 parser.add_argument('-portfolio', type=int, help='Portfolio ID',  default=10)
-parser.add_argument('-total_steps', type=float, help='#Total steps in the env in millions ',  default=2)
+parser.add_argument('-total_steps', type=float, help='#Total steps in the env in millions ',  default=20)
 parser.add_argument('-batchsize', type=int, help='Seed',  default=256)
 
 
 POP_SIZE = vars(parser.parse_args())['pop_size']
 BATCHSIZE = vars(parser.parse_args())['batchsize']
 ROLLOUT_SIZE = vars(parser.parse_args())['rollout_size']
-ENV_NAME = vars(parser.parse_args())['env']
 GRADPERSTEP = vars(parser.parse_args())['gradperstep']
 SAVETAG = vars(parser.parse_args())['savetag']
 BUFFER_GPU = vars(parser.parse_args())['buffer_gpu']
@@ -56,16 +55,8 @@ SEED = vars(parser.parse_args())['seed']
 GPU_DEVICE = vars(parser.parse_args())['gpu_id']
 PORTFOLIO_ID = vars(parser.parse_args())['portfolio']
 TOTAL_STEPS = int(vars(parser.parse_args())['total_steps'] * 1000000)
-os.environ["CUDA_VISIBLE_DEVICES"]=str(GPU_DEVICE)
 
-#ICML EXPERIMENT
-if PORTFOLIO_ID == 11 or PORTFOLIO_ID == 12 or PORTFOLIO_ID == 13 or PORTFOLIO_ID == 14 or PORTFOLIO_ID == 101 or PORTFOLIO_ID == 102: ISOLATE_PG = True
-else:
-    ISOLATE_PG = False
-ALGO = "TD3"
-SAVE = True
-TEST_SIZE=10
-
+TEST_SIZE=1
 
 class Parameters:
 	def __init__(self):
@@ -79,10 +70,13 @@ class Parameters:
 		"""
 		self.seed = SEED
 		self.asynch_frac = 1.0 #Aynchronosity of NeuroEvolution
-		self.algo = ALGO
+		self.algo = 'TD3'
+
+		self.action_high=1.0
+		self.action_low=0.0
 
 		self.batch_size = BATCHSIZE #Batch size
-		self.noise_std = 0.1 #Gaussian noise exploration std
+		self.noise_std = 0.01 #Gaussian noise exploration std
 		self.ucb_coefficient = 0.9 #Exploration coefficient in UCB
 		self.gradperstep = GRADPERSTEP
 		self.buffer_gpu = BUFFER_GPU
@@ -100,11 +94,11 @@ class Parameters:
 		self.weight_magnitude_limit = 10000000
 		self.mut_distribution = 1  # 1-Gaussian, 2-Laplace, 3-Uniform
 
+		self.state_dim = 339
+		self.action_dim = 22
+
 
 		#Save Results
-		dummy_env = gym.make(ENV_NAME)
-		self.state_dim = dummy_env.observation_space.shape[0]; self.action_dim = dummy_env.action_space.shape[0]
-		self.action_low = float(dummy_env.action_space.low[0]); self.action_high = float(dummy_env.action_space.high[0])
 		self.savefolder = 'Results/'
 		if not os.path.exists('Results/'): os.makedirs('Results/')
 		self.aux_folder = self.savefolder + 'Auxiliary/'
@@ -223,9 +217,9 @@ class CERL_Agent:
 
 		#Sync all learners actor to cpu (rollout) actor
 		for i, learner in enumerate(self.portfolio):
-			learner.algo.actor.cpu()
+			#learner.algo.actor.cpu()
 			utils.hard_update(self.rollout_bucket[i], learner.algo.actor)
-			learner.algo.actor.cuda()
+			#learner.algo.actor.cuda()
 
 		# Start Learner rollouts
 		for rollout_id, learner_id in enumerate(self.allocation):
@@ -290,9 +284,9 @@ class CERL_Agent:
 			if max(all_fitness) > self.best_score:
 				self.best_score = max(all_fitness)
 				utils.hard_update(self.best_policy, self.pop[champ_index])
-				if SAVE:
-					torch.save(self.pop[champ_index].state_dict(), self.args.aux_folder + ENV_NAME+'_best'+SAVETAG)
-					print("Best policy saved with score", '%.2f'%max(all_fitness))
+				# if SAVE:
+				# 	torch.save(self.pop[champ_index].state_dict(), self.args.aux_folder + ENV_NAME+'_best'+SAVETAG)
+				# 	print("Best policy saved with score", '%.2f'%max(all_fitness))
 
 		else: #Run PG in isolation
 			utils.hard_update(self.test_bucket[0], self.rollout_bucket[0])
@@ -340,7 +334,6 @@ if __name__ == "__main__":
 	args = Parameters()  # Create the Parameters class
 	SAVETAG = SAVETAG + '_p' + str(PORTFOLIO_ID)
 	SAVETAG = SAVETAG + '_s' + str(SEED)
-	if ISOLATE_PG: SAVETAG = SAVETAG + '_pg'
 
 	frame_tracker = utils.Tracker(args.savefolder, ['score_'+ENV_NAME+SAVETAG], '.csv')  #Tracker class to log progress
 	max_tracker = utils.Tracker(args.aux_folder, ['pop_max_score_'+ENV_NAME+SAVETAG], '.csv')  #Tracker class to log progress FOR MAX (NOT REPORTED)
@@ -350,7 +343,7 @@ if __name__ == "__main__":
 
 	#INITIALIZE THE MAIN AGENT CLASS
 	agent = CERL_Agent(args) #Initialize the agent
-	print('Running CERL for', ENV_NAME, 'State_dim:', args.state_dim, ' Action_dim:', args.action_dim)
+	print('Running CERL ', 'State_dim:', args.state_dim, ' Action_dim:', args.action_dim)
 
 	time_start = time.time()
 	for gen in range(1, 1000000000): #Infinite generations
@@ -359,7 +352,7 @@ if __name__ == "__main__":
 		best_score, test_len, all_fitness, all_eplen, test_mean, test_std, champ_wwid = agent.train(gen, frame_tracker)
 
 		#PRINT PROGRESS
-		print('Env', ENV_NAME, 'Gen', gen, 'Frames', agent.total_frames, ' Pop_max/max_ever:','%.2f'%best_score, '/','%.2f'%agent.best_score, ' Avg:','%.2f'%frame_tracker.all_tracker[0][1],
+		print('Gen', gen, 'Frames', agent.total_frames, ' Pop_max/max_ever:','%.2f'%best_score, '/','%.2f'%agent.best_score, ' Avg:','%.2f'%frame_tracker.all_tracker[0][1],
 		      ' Frames/sec:','%.2f'%(agent.total_frames/(time.time()-time_start)),
 			  ' Champ_len', '%.2f'%test_len, ' Test_score u/std', utils.pprint(test_mean), utils.pprint(test_std), 'savetag', SAVETAG, )
 

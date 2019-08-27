@@ -51,8 +51,7 @@ class Learner:
 	def update_parameters(self, replay_buffer, buffer_gpu, batch_size, iterations):
 		for _ in range(iterations):
 			s, ns, a, r, done = replay_buffer.sample(batch_size)
-			if not buffer_gpu:
-				s = s.cuda(); ns = ns.cuda(); a = a.cuda(); r = r.cuda(); done = done.cuda()
+
 			self.algo.update_parameters(s, ns, a, r, done, 1, **self.td3args)
 
 

@@ -51,7 +51,7 @@ class Off_Policy_Algo(object):
 
         self.loss = nn.MSELoss()
 
-        self.actor_target.cuda(); self.critic_target.cuda(); self.actor.cuda(); self.critic.cuda()
+        #self.actor_target.cuda(); self.critic_target.cuda(); self.actor.cuda(); self.critic.cuda()
         self.num_critic_updates = 0
 
         #Statistics Tracker

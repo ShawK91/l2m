@@ -14,7 +14,7 @@
 # limitations under the License.
 # ******************************************************************************
 
-from core.env_wrapper import EnvironmentWrapper
+from core.env_wrapper import L2MWrapper
 from core import mod_utils as utils
 import numpy as np
 import torch
@@ -36,7 +36,7 @@ def rollout_worker(id, task_pipe, result_pipe, is_noise, data_bucket, model_buck
         Returns:
             None
     """
-	env = EnvironmentWrapper(env_name, ALGO)
+	env = L2MWrapper(T=300, integrator_accuracy=5e-3)
 	np.random.seed(id) ###make sure the random seeds across learners are different
 
 	###LOOP###
@@ -50,11 +50,10 @@ def rollout_worker(id, task_pipe, result_pipe, is_noise, data_bucket, model_buck
 
 		fitness = 0.0;
 		total_frame = 0
-		state = env.reset();
+		state = env.reset()
 		rollout_trajectory = []
-		state = utils.to_tensor(np.array(state)).unsqueeze(0)
+		state = utils.to_tensor(np.array(state))
 		while True:  # unless done
-
 			action = net.forward(state)
 			action = utils.to_numpy(action)
 			if is_noise:
@@ -63,7 +62,7 @@ def rollout_worker(id, task_pipe, result_pipe, is_noise, data_bucket, model_buck
 			next_state, reward, done, info = env.step(action.flatten())  # Simulate one step in environment
 
 
-			next_state = utils.to_tensor(np.array(next_state)).unsqueeze(0)
+			next_state = utils.to_tensor(np.array(next_state))
 			fitness += reward
 
 			# If storing transitions
@@ -72,7 +71,7 @@ def rollout_worker(id, task_pipe, result_pipe, is_noise, data_bucket, model_buck
 				                        np.float32(action), np.reshape(np.float32(np.array([reward])), (1, 1)),
 				                           np.reshape(np.float32(np.array([float(done)])), (1, 1))])
 			state = next_state
-			total_frame += 1
+			total_frame += 4
 
 			# DONE FLAG IS Received
 			if done:

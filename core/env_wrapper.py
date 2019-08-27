@@ -13,11 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ******************************************************************************
+import numpy as np
 
-import gym
 
 
-class EnvironmentWrapper:
+class L2MWrapper:
 	"""Wrapper around the Environment to expose a cleaner interface for RL
 
 		Parameters:
@@ -25,16 +25,14 @@ class EnvironmentWrapper:
 
 
 	"""
-	def __init__(self, env_name, ALGO):
+	def __init__(self, visualize=False, integrator_accuracy=5e-5, seed=0, report=None, frameskip=4, T=1000):
 		"""
 		A base template for all environment wrappers.
 		"""
-		self.env = gym.make(env_name)
-		self.action_low = float(self.env.action_space.low[0])
-		self.action_high = float(self.env.action_space.high[0])
-		self.ALGO = ALGO
-
-
+		from osim.env import L2M2019Env
+		self.env = L2M2019Env(visualize=visualize, integrator_accuracy=integrator_accuracy, seed=0, report=None)
+		self.frameskip=frameskip
+		self.T=T; self.istep = 0
 
 
 	def reset(self):
@@ -45,10 +43,11 @@ class EnvironmentWrapper:
 			Returns:
 				next_obs (list): Next state
 		"""
-		return self.env.reset()
+		return np.expand_dims(np.array(flatten(self.env.reset())), 0)
 
 
-	def step(self, action: object): #Expects a numpy action
+
+	def step(self, action): #Expects a numpy action
 		"""Take an action to forward the simulation
 
 			Parameters:
@@ -61,11 +60,35 @@ class EnvironmentWrapper:
 				info (None): Template from OpenAi gym (doesnt have anything)
 		"""
 
-		action = self.action_low + action * (self.action_high - self.action_low)
-		return self.env.step(action)
+		reward = 0.0; done=False
+		for _ in range(self.frameskip):
+			if done: continue
+			self.istep += 1
+			next_state, rew, done, info = self.env.step(action)
+			reward += rew
+
+		next_state = np.expand_dims(np.array(flatten(next_state)), 0)
+		return next_state, reward, done, info
 
 	def render(self):
 		self.env.render()
 
 
-
+def flatten(d):
+    """Recursive method to flatten a dict -->list
+        Parameters:
+            d (dict): dict
+        Returns:
+            l (list)
+    """
+    res = []  # Result list
+    if isinstance(d, dict):
+        for key, val in sorted(d.items()):
+            res.extend(flatten(val))
+    elif isinstance(d, list):
+        res = d
+    elif isinstance(d, np.ndarray):
+        res = list(d.flatten())
+    else:
+        res = [d]
+    return res
