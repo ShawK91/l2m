@@ -15,6 +15,7 @@
 # ******************************************************************************
 
 from core.off_policy_algo import Off_Policy_Algo
+import torch
 
 
 
@@ -36,9 +37,9 @@ class Learner:
 
 	"""
 
-	def __init__(self, wwid, algo_name, state_dim, action_dim, actor_lr, critic_lr, gamma, tau, init_w = True, **td3args):
+	def __init__(self, wwid, algo_name, state_dim, goal_dim, action_dim, actor_lr, critic_lr, gamma, tau, init_w = True, **td3args):
 		self.td3args = td3args; self.id = id
-		self.algo = Off_Policy_Algo(wwid, algo_name, state_dim, action_dim, actor_lr, critic_lr, gamma, tau, init_w)
+		self.algo = Off_Policy_Algo(wwid, algo_name, state_dim, goal_dim, action_dim, actor_lr, critic_lr, gamma, tau, init_w)
 
 
 		#LEARNER STATISTICS
@@ -50,9 +51,17 @@ class Learner:
 
 	def update_parameters(self, replay_buffer, buffer_gpu, batch_size, iterations):
 		for _ in range(iterations):
-			s, ns, a, r, done = replay_buffer.sample(batch_size)
+			s, ns, g, ng, a, r, done = replay_buffer.sample(batch_size)
 
-			self.algo.update_parameters(s, ns, a, r, done, 1, **self.td3args)
+			if torch.cuda.is_available():
+				s =s.cuda()
+				ns = ns.cuda()
+				g=g.cuda()
+				ng=ng.cuda()
+				a=a.cuda()
+				r=r.cuda()
+				done=done.cuda()
+			self.algo.update_parameters(s, ns, g, ng, a, r, done, 1, **self.td3args)
 
 
 	def update_stats(self, fitness, ep_len, gamma=0.2):

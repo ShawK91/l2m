@@ -31,18 +31,18 @@ import argparse
 
 ENV_NAME = ''
 ALGO='TD3'
-ISOLATE_PG=False
+
 parser = argparse.ArgumentParser()
-parser.add_argument('-pop_size', type=int, help='#Policies in the population',  default=10)
-parser.add_argument('-seed', type=int, help='Seed',  default=2018)
-parser.add_argument('-rollout_size', type=int, help='#Policies in rolout size',  default=10)
+parser.add_argument('-pop_size', type=int, help='#Policies in the population',  default=15)
+parser.add_argument('-seed', type=int, help='Seed',  default=2019)
+parser.add_argument('-rollout_size', type=int, help='#Policies in rolout size',  default=20)
 parser.add_argument('-gradperstep', type=float, help='#Gradient step per env step',  default=1.0)
 parser.add_argument('-savetag', type=str, help='#Tag to append to savefile',  default='')
 parser.add_argument('-gpu_id', type=int, help='#GPU ID ',  default=0)
 parser.add_argument('-buffer_gpu', type=str2bool, help='#Store buffer in GPU?',  default=0)
 parser.add_argument('-portfolio', type=int, help='Portfolio ID',  default=10)
-parser.add_argument('-total_steps', type=float, help='#Total steps in the env in millions ',  default=20)
-parser.add_argument('-batchsize', type=int, help='Seed',  default=256)
+parser.add_argument('-total_steps', type=float, help='#Total steps in the env in millions ',  default=40)
+parser.add_argument('-batchsize', type=int, help='Seed',  default=512)
 
 
 POP_SIZE = vars(parser.parse_args())['pop_size']
@@ -55,6 +55,9 @@ SEED = vars(parser.parse_args())['seed']
 GPU_DEVICE = vars(parser.parse_args())['gpu_id']
 PORTFOLIO_ID = vars(parser.parse_args())['portfolio']
 TOTAL_STEPS = int(vars(parser.parse_args())['total_steps'] * 1000000)
+
+if GPU_DEVICE != -1:
+	os.environ["CUDA_VISIBLE_DEVICES"]=str(GPU_DEVICE)
 
 TEST_SIZE=1
 
@@ -71,6 +74,7 @@ class Parameters:
 		self.seed = SEED
 		self.asynch_frac = 1.0 #Aynchronosity of NeuroEvolution
 		self.algo = 'TD3'
+		self.gpu_device = GPU_DEVICE
 
 		self.action_high=1.0
 		self.action_low=0.0
@@ -94,7 +98,8 @@ class Parameters:
 		self.weight_magnitude_limit = 10000000
 		self.mut_distribution = 1  # 1-Gaussian, 2-Laplace, 3-Uniform
 
-		self.state_dim = 339
+		self.state_dim = 97
+		self.goal_dim = 72
 		self.action_dim = 22
 
 
@@ -127,12 +132,12 @@ class CERL_Agent:
 		self.pop = self.manager.list()
 		for _ in range(args.pop_size):
 			wwid = self.genealogy.new_id('evo')
-			if ALGO == 'SAC': self.pop.append(GaussianPolicy(args.state_dim, args.action_dim, args.hidden_size, wwid))
-			else: self.pop.append(Actor(args.state_dim, args.action_dim, wwid))
+			if ALGO == 'SAC': self.pop.append(GaussianPolicy(args.state_dim, args.action_dim, args.goal_dim, args.hidden_size, wwid))
+			else: self.pop.append(Actor(args.state_dim, args.goal_dim, args.action_dim, wwid))
 
-		if ALGO == "SAC": self.best_policy = GaussianPolicy(args.state_dim, args.action_dim, args.hidden_size, -1)
+		if ALGO == "SAC": self.best_policy = GaussianPolicy(args.state_dim, args.goal_dim, args.action_dim, args.hidden_size, -1)
 		else:
-			self.best_policy = Actor(args.state_dim, args.action_dim, -1)
+			self.best_policy = Actor(args.state_dim, args.goal_dim, args.action_dim, -1)
 
 
 		#Turn off gradients and put in eval mod
@@ -149,7 +154,7 @@ class CERL_Agent:
 		self.rollout_bucket = self.manager.list()
 		for _ in range(len(self.portfolio)):
 			if ALGO == 'SAC': self.rollout_bucket.append(GaussianPolicy(args.state_dim, args.action_dim, args.hidden_size, -1))
-			else: self.rollout_bucket.append(Actor(args.state_dim, args.action_dim, -1))
+			else: self.rollout_bucket.append(Actor(args.state_dim, args.goal_dim, args.action_dim, -1))
 
 
 
@@ -176,9 +181,9 @@ class CERL_Agent:
 		#Test bucket
 		self.test_bucket = self.manager.list()
 		if ALGO == 'SAC':
-			self.test_bucket.append(GaussianPolicy(args.state_dim, args.action_dim, args.hidden_size, -1))
+			self.test_bucket.append(GaussianPolicy(args.state_dim, args.goal_dim, args.action_dim, args.hidden_size, -1))
 		else:
-			self.test_bucket.append(Actor(args.state_dim, args.action_dim, -1))
+			self.test_bucket.append(Actor(args.state_dim, args.goal_dim, args.action_dim, -1))
 
 		#5 Test workers
 		self.test_task_pipes = [Pipe() for _ in range(TEST_SIZE)]
@@ -209,7 +214,7 @@ class CERL_Agent:
 		################ START ROLLOUTS ##############
 
 		#Start Evolution rollouts
-		if not ISOLATE_PG:
+		if self.args.pop_size > 1:
 			for id, actor in enumerate(self.pop):
 				if self.evo_flag[id]:
 					self.evo_task_pipes[id][0].send(id)
@@ -217,9 +222,9 @@ class CERL_Agent:
 
 		#Sync all learners actor to cpu (rollout) actor
 		for i, learner in enumerate(self.portfolio):
-			#learner.algo.actor.cpu()
+			learner.algo.actor.cpu()
 			utils.hard_update(self.rollout_bucket[i], learner.algo.actor)
-			#learner.algo.actor.cuda()
+			learner.algo.actor.cuda()
 
 		# Start Learner rollouts
 		for rollout_id, learner_id in enumerate(self.allocation):
@@ -250,7 +255,7 @@ class CERL_Agent:
 
 
 		########## SOFT -JOIN ROLLOUTS FOR EVO POPULATION ############
-		if not ISOLATE_PG:
+		if self.args.pop_size > 1:
 			all_fitness = []; all_net_ids = []; all_eplens = []
 			while True:
 				for i in range(self.args.pop_size):
@@ -263,30 +268,30 @@ class CERL_Agent:
 				if len(all_fitness) / self.args.pop_size >= self.args.asynch_frac: break
 
 		########## HARD -JOIN ROLLOUTS FOR LEARNER ROLLOUTS ############
-		for i in range(self.args.rollout_size):
-			entry = self.result_pipes[i][1].recv()
-			learner_id = entry[0]; fitness = entry[1]; num_frames = entry[2]
-			self.portfolio[learner_id].update_stats(fitness, num_frames)
+		if self.args.rollout_size > 0:
+			for i in range(self.args.rollout_size):
+				entry = self.result_pipes[i][1].recv()
+				learner_id = entry[0]; fitness = entry[1]; num_frames = entry[2]
+				self.portfolio[learner_id].update_stats(fitness, num_frames)
 
-			self.gen_frames += num_frames; self.total_frames += num_frames
-			if fitness > self.best_score: self.best_score = fitness
+				self.gen_frames += num_frames; self.total_frames += num_frames
+				if fitness > self.best_score: self.best_score = fitness
 
-			self.roll_flag[i] = True
+				self.roll_flag[i] = True
 
-		#Referesh buffer (housekeeping tasks - pruning to keep under capacity)
-		self.replay_buffer.referesh()
+			#Referesh buffer (housekeeping tasks - pruning to keep under capacity)
+			self.replay_buffer.referesh()
 		######################### END OF PARALLEL ROLLOUTS ################
 
 		############ PROCESS MAX FITNESS #############
-		if not ISOLATE_PG:
+		if self.args.pop_size > 1:
 			champ_index = all_net_ids[all_fitness.index(max(all_fitness))]
 			utils.hard_update(self.test_bucket[0], self.pop[champ_index])
 			if max(all_fitness) > self.best_score:
 				self.best_score = max(all_fitness)
 				utils.hard_update(self.best_policy, self.pop[champ_index])
-				# if SAVE:
-				# 	torch.save(self.pop[champ_index].state_dict(), self.args.aux_folder + ENV_NAME+'_best'+SAVETAG)
-				# 	print("Best policy saved with score", '%.2f'%max(all_fitness))
+				torch.save(self.pop[champ_index].state_dict(), self.args.aux_folder + ENV_NAME+'_best'+SAVETAG)
+				print("Best policy saved with score", '%.2f'%max(all_fitness))
 
 		else: #Run PG in isolation
 			utils.hard_update(self.test_bucket[0], self.rollout_bucket[0])
@@ -308,19 +313,18 @@ class CERL_Agent:
 
 
 		#NeuroEvolution's probabilistic selection and recombination step
-		if not ISOLATE_PG:
+		if self.args.pop_size > 1:
 			if gen % 5 == 0:
 				self.evolver.epoch(gen, self.genealogy, self.pop, all_net_ids, all_fitness, self.rollout_bucket)
 			else:
 				self.evolver.epoch(gen, self.genealogy, self.pop, all_net_ids, all_fitness, [])
 
 		#META LEARNING - RESET ALLOCATION USING UCB
-		if gen % 1 == 0:
-			self.allocation = ucb(len(self.allocation), self.portfolio, self.args.ucb_coefficient)
+		if gen % 1 == 0 and self.args.rollout_size > 0: self.allocation = ucb(len(self.allocation), self.portfolio, self.args.ucb_coefficient)
 
 
 		#Metrics
-		if not ISOLATE_PG:
+		if self.args.pop_size > 1:
 			champ_len = all_eplens[all_fitness.index(max(all_fitness))]
 			champ_wwid = int(self.pop[champ_index].wwid.item())
 			max_fit = max(all_fitness)

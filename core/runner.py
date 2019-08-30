@@ -50,27 +50,30 @@ def rollout_worker(id, task_pipe, result_pipe, is_noise, data_bucket, model_buck
 
 		fitness = 0.0;
 		total_frame = 0
-		state = env.reset()
+		state, goal = env.reset()
 		rollout_trajectory = []
-		state = utils.to_tensor(np.array(state))
+		state = utils.to_tensor(state); goal = utils.to_tensor(goal)
 		while True:  # unless done
-			action = net.forward(state)
+			action = net.forward(state, goal)
 			action = utils.to_numpy(action)
 			if is_noise:
 				action = (action + np.random.normal(0, noise_std, size=env.env.action_space.shape[0])).clip(env.env.action_space.low, env.env.action_space.high)
 
-			next_state, reward, done, info = env.step(action.flatten())  # Simulate one step in environment
+			next_state, next_goal, reward, done, info = env.step(action.flatten())  # Simulate one step in environment
 
 
-			next_state = utils.to_tensor(np.array(next_state))
+			next_state = utils.to_tensor(next_state)
+			next_goal = utils.to_tensor(next_goal)
 			fitness += reward
 
 			# If storing transitions
 			if data_bucket != None: #Skip for test set
 				rollout_trajectory.append([utils.to_numpy(state), utils.to_numpy(next_state),
+										   utils.to_numpy(goal), utils.to_numpy(next_goal),
 				                        np.float32(action), np.reshape(np.float32(np.array([reward])), (1, 1)),
 				                           np.reshape(np.float32(np.array([float(done)])), (1, 1))])
 			state = next_state
+			goal = next_goal
 			total_frame += 4
 
 			# DONE FLAG IS Received
