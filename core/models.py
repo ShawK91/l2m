@@ -96,7 +96,7 @@ class Critic(nn.Module):
 
         ######################## Q1 Head ##################
         # Construct Hidden Layer 1 with state
-        self.q1f1 = nn.Linear(state_dim + action_dim + goal_dim, l1)
+        self.q1f1 = nn.Linear(state_dim + action_dim + g1, l1)
         self.q1ln1 = nn.LayerNorm(l1)
 
         #Hidden Layer 2
@@ -159,7 +159,7 @@ class Critic(nn.Module):
 
 
         #Concatenate observation+action as critic state
-        state = torch.cat([obs, goal, action], 1)
+        state = torch.cat([obs, goal_out, action], 1)
 
         ###### Q1 HEAD ####
         q1 = torch.tanh(self.q1f1(state))
