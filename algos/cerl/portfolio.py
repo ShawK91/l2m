@@ -33,27 +33,27 @@ def initialize_portfolio(portfolio, args, genealogy, portfolio_id):
 		# Learner 1
 		wwid = genealogy.new_id('learner_1')
 		portfolio.append(
-			Learner(wwid, args.algo,args.state_dim, args.goal_dim, args.action_dim, actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=0.9, tau=args.tau))
+			Learner(args.policy_type, args.algo,args.state_dim, args.goal_dim, args.action_dim, actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=0.9, tau=args.tau))
 
 		# Learner 2
 		wwid = genealogy.new_id('learner_3')
 		portfolio.append(
-			Learner(wwid, args.algo,args.state_dim, args.goal_dim, args.action_dim, actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=0.99, tau=args.tau))
+			Learner(args.policy_type, args.algo,args.state_dim, args.goal_dim, args.action_dim, actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=0.99, tau=args.tau))
 
 		# Learner 3
 		wwid = genealogy.new_id('learner_4')
 		portfolio.append(
-			Learner(wwid, args.algo,args.state_dim, args.goal_dim, args.action_dim, actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=0.997, tau=args.tau))
+			Learner(args.policy_type, args.algo,args.state_dim, args.goal_dim, args.action_dim, actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=0.997, tau=args.tau))
 
 		# Learner 4
 		wwid = genealogy.new_id('learner_4')
 		portfolio.append(
-			Learner(wwid, args.algo,args.state_dim, args.goal_dim, args.action_dim, actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=0.9995, tau=args.tau))
+			Learner(args.policy_type, args.algo,args.state_dim, args.goal_dim, args.action_dim, actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=0.9995, tau=args.tau))
 
 		# Learner 5
 		wwid = genealogy.new_id('learner_5')
 		portfolio.append(
-			Learner(wwid, args.algo, args.state_dim, args.goal_dim, args.action_dim, actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=0.9999, tau=args.tau))
+			Learner(args.policy_type, args.algo, args.state_dim, args.goal_dim, args.action_dim, actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=0.9999, tau=args.tau))
 
 
 

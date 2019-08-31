@@ -25,7 +25,7 @@ parser.add_argument('--seed', type=int, help='Seed', default=2019)
 parser.add_argument('--savetag', type=str, help='#Tag to append to savefile',  default='')
 parser.add_argument('--gpu_id', type=int, help='#GPU ID ',  default=0)
 parser.add_argument('--total_steps', type=float, help='#Total steps in the env in millions ', default=40)
-parser.add_argument('--algo', type=str, help='Which algo? - CERL_SAC, CERL_TD3, TD3, SAC ',  default='cerl_td3')
+parser.add_argument('--algo', type=str, help='Which algo? - CERL_SAC, CERL_TD3, TD3, SAC ',  default='sac')
 parser.add_argument('--buffer', type=float, help='Buffer size in million',  default=1)
 
 parser.add_argument('--critic_lr', type=float, help='Critic learning rate? - Actor', default='5e-4')
@@ -62,7 +62,9 @@ elif ALGO == 'td3':
 
 
 elif ALGO == 'sac':
-	pass
+	from algos.sac.sac_trainer import SAC_Trainer
+	ai = SAC_Trainer(args)
+	ai.train(args.total_steps)
 
 else:
 	raise ValueError('Unknown choice for Algo')

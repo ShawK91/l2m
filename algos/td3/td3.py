@@ -30,14 +30,14 @@ class TD3(object):
 
 
      """
-    def __init__(self, wwid, state_dim, goal_dim, action_dim, actor_lr, critic_lr, gamma, tau, polciy_noise, policy_noise_clip,policy_ups_freq):
+    def __init__(self, policy_type, state_dim, goal_dim, action_dim, actor_lr, critic_lr, gamma, tau, polciy_noise, policy_noise_clip,policy_ups_freq):
 
         self.gamma = gamma; self.tau = tau; self.policy_noise = polciy_noise; self.policy_noise_clip = policy_noise_clip; self.policy_ups_freq = policy_ups_freq
 
         #Initialize actors
-        self.actor = Actor(state_dim, goal_dim, action_dim, wwid)
+        self.actor = Actor(state_dim, goal_dim, action_dim, policy_type)
         #if init_w: self.actor.apply(utils.init_weights)
-        self.actor_target = Actor(state_dim, goal_dim, action_dim, wwid)
+        self.actor_target = Actor(state_dim, goal_dim, action_dim, policy_type)
         utils.hard_update(self.actor_target, self.actor)
         self.actor_optim = Adam(self.actor.parameters(), actor_lr)
 

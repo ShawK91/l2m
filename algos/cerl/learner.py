@@ -34,12 +34,12 @@ class Learner(Agent):
 
 	"""
 
-	def __init__(self, id, algo_name, state_dim, goal_dim, action_dim, actor_lr, critic_lr, gamma, tau):
+	def __init__(self, policy_type, algo_name, state_dim, goal_dim, action_dim, actor_lr, critic_lr, gamma, tau):
 		super().__init__(id, algo_name)
 
 		if algo_name == 'cerl_td3':
 			from algos.td3.td3 import TD3
-			self.algo = TD3(wwid=id, state_dim=state_dim, goal_dim=goal_dim, action_dim=action_dim, actor_lr=actor_lr, critic_lr=critic_lr, gamma=gamma, tau=tau, polciy_noise=0.1, policy_noise_clip=0.2, policy_ups_freq=2)
+			self.algo = TD3(policy_type, state_dim=state_dim, goal_dim=goal_dim, action_dim=action_dim, actor_lr=actor_lr, critic_lr=critic_lr, gamma=gamma, tau=tau, polciy_noise=0.1, policy_noise_clip=0.2, policy_ups_freq=2)
 
 
 
