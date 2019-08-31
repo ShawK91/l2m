@@ -17,7 +17,7 @@
 import random
 import numpy as np
 import math
-import core.mod_utils as utils
+import core.utils as utils
 
 
 
@@ -266,8 +266,8 @@ class SSNE:
 		for policy in migration:
 			replacee = unselects.pop(0)
 			utils.hard_update(target=pop[replacee], source=policy)
-			wwid = genealogy.asexual(int(policy.wwid.item()))
-			pop[replacee].wwid[0] = wwid
+			#wwid = genealogy.asexual(int(policy.wwid.item()))
+			#pop[replacee].wwid[0] = wwid
 
 		# Elitism step, assigning elite candidates to some unselects
 		for i in elitist_index:
@@ -275,9 +275,9 @@ class SSNE:
 			except: replacee = offsprings.pop(0)
 			new_elitists.append(replacee)
 			utils.hard_update(target=pop[replacee], source=pop[i])
-			wwid = genealogy.asexual(int(pop[i].wwid.item()))
-			pop[replacee].wwid[0] = wwid
-			genealogy.elite(wwid, gen)
+			#wwid = genealogy.asexual(int(pop[i].wwid.item()))
+			#pop[replacee].wwid[0] = wwid
+			#genealogy.elite(wwid, gen)
 
 			#self.lineage[replacee] = self.lineage[i]
 
@@ -290,9 +290,9 @@ class SSNE:
 			utils.hard_update(target=pop[i], source=pop[off_i])
 			utils.hard_update(target=pop[j], source=pop[off_j])
 			self.crossover_inplace(pop[i], pop[j])
-			wwid1 = genealogy.crossover(int(pop[off_i].wwid.item()), int(pop[off_j].wwid.item()), gen)
-			wwid2 = genealogy.crossover(int(pop[off_i].wwid.item()), int(pop[off_j].wwid.item()), gen)
-			pop[i].wwid[0] = wwid1; pop[j].wwid[0] = wwid2
+			#wwid1 = genealogy.crossover(int(pop[off_i].wwid.item()), int(pop[off_j].wwid.item()), gen)
+			#wwid2 = genealogy.crossover(int(pop[off_i].wwid.item()), int(pop[off_j].wwid.item()), gen)
+			#pop[i].wwid[0] = wwid1; pop[j].wwid[0] = wwid2
 
 			#self.lineage[i] = (self.lineage[off_i]+self.lineage[off_j])/2
 			#self.lineage[j] = (self.lineage[off_i] + self.lineage[off_j]) / 2
@@ -301,9 +301,9 @@ class SSNE:
 		for i, j in zip(offsprings[0::2], offsprings[1::2]):
 			if random.random() < self.args.crossover_prob:
 				self.crossover_inplace(pop[i], pop[j])
-				wwid1 = genealogy.crossover(int(pop[i].wwid.item()), int(pop[j].wwid.item()), gen)
-				wwid2 = genealogy.crossover(int(pop[i].wwid.item()), int(pop[j].wwid.item()), gen)
-				pop[i].wwid[0] = wwid1; pop[j].wwid[0] = wwid2
+				#wwid1 = genealogy.crossover(int(pop[i].wwid.item()), int(pop[j].wwid.item()), gen)
+				#wwid2 = genealogy.crossover(int(pop[i].wwid.item()), int(pop[j].wwid.item()), gen)
+				#pop[i].wwid[0] = wwid1; pop[j].wwid[0] = wwid2
 
 
 		# Mutate all genes in the population except the new elitists
@@ -311,7 +311,7 @@ class SSNE:
 			if net_i not in new_elitists:  # Spare the new elitists
 				if random.random() < self.args.mutation_prob:
 					self.mutate_inplace(pop[net_i])
-					genealogy.mutation(int(pop[net_i].wwid.item()), gen)
+					#genealogy.mutation(int(pop[net_i].wwid.item()), gen)
 
 
 		self.all_offs[:] = offsprings[:]

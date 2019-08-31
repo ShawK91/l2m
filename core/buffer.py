@@ -26,7 +26,7 @@ class Buffer():
 			capacity (int): Maximum number of experiences to hold in cyclic buffer
 		"""
 
-	def __init__(self, capacity, buffer_gpu):
+	def __init__(self, capacity, buffer_gpu=False):
 		self.capacity = capacity; self.buffer_gpu = buffer_gpu; self.counter = 0
 		self.manager = Manager()
 		self.tuples = self.manager.list() #Temporary shared buffer to get experiences from processes

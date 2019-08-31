@@ -30,9 +30,6 @@ class Info():
 		self.num_mut = 0.0
 
 
-
-
-
 class Genealogy():
 	def __init__(self):
 		self.wwid_counter = 0

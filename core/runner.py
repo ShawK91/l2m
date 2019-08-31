@@ -14,14 +14,13 @@
 # limitations under the License.
 # ******************************************************************************
 
-from core.env_wrapper import L2MWrapper
-from core import mod_utils as utils
+from envs_repo.env_wrapper import L2MWrapper
+from core import utils as utils
 import numpy as np
-import torch
 
 
 # Rollout evaluate an agent in a complete game
-def rollout_worker(id, task_pipe, result_pipe, is_noise, data_bucket, model_bucket, env_name, noise_std, ALGO):
+def rollout_worker(id, type, task_pipe, result_pipe, data_bucket, model_bucket):
 	"""Rollout Worker runs a simulation in the environment to generate experiences and fitness values
 
         Parameters:
@@ -47,17 +46,17 @@ def rollout_worker(id, task_pipe, result_pipe, is_noise, data_bucket, model_buck
 		# Get the requisite network
 		net = model_bucket[identifier]
 
-
 		fitness = 0.0;
 		total_frame = 0
 		state, goal = env.reset()
 		rollout_trajectory = []
 		state = utils.to_tensor(state); goal = utils.to_tensor(goal)
 		while True:  # unless done
-			action = net.forward(state, goal)
+
+			if type == 'pg': action = net.noisy_action(state, goal)
+			else: action = net.clean_action(state, goal)
+
 			action = utils.to_numpy(action)
-			if is_noise:
-				action = (action + np.random.normal(0, noise_std, size=env.env.action_space.shape[0])).clip(env.env.action_space.low, env.env.action_space.high)
 
 			next_state, next_goal, reward, done, info = env.step(action.flatten())  # Simulate one step in environment
 

@@ -14,13 +14,10 @@
 # limitations under the License.
 # ******************************************************************************
 
-from core.off_policy_algo import Off_Policy_Algo
+from abstract.agent import Agent
 import torch
 
-
-
-
-class Learner:
+class Learner(Agent):
 	"""Learner object encapsulating a local learner
 
 		Parameters:
@@ -37,37 +34,12 @@ class Learner:
 
 	"""
 
-	def __init__(self, wwid, algo_name, state_dim, goal_dim, action_dim, actor_lr, critic_lr, gamma, tau, init_w = True, **td3args):
-		self.td3args = td3args; self.id = id
-		self.algo = Off_Policy_Algo(wwid, algo_name, state_dim, goal_dim, action_dim, actor_lr, critic_lr, gamma, tau, init_w)
+	def __init__(self, id, algo_name, state_dim, goal_dim, action_dim, actor_lr, critic_lr, gamma, tau):
+		super().__init__(id, algo_name)
+
+		if algo_name == 'cerl_td3':
+			from algos.td3.td3 import TD3
+			self.algo = TD3(wwid=id, state_dim=state_dim, goal_dim=goal_dim, action_dim=action_dim, actor_lr=actor_lr, critic_lr=critic_lr, gamma=gamma, tau=tau, polciy_noise=0.1, policy_noise_clip=0.2, policy_ups_freq=2)
 
 
-		#LEARNER STATISTICS
-		self.fitnesses = []
-		self.ep_lens = []
-		self.value = None
-		self.visit_count = 0
 
-
-	def update_parameters(self, replay_buffer, buffer_gpu, batch_size, iterations):
-		for _ in range(iterations):
-			s, ns, g, ng, a, r, done = replay_buffer.sample(batch_size)
-
-			if torch.cuda.is_available():
-				s =s.cuda()
-				ns = ns.cuda()
-				g=g.cuda()
-				ng=ng.cuda()
-				a=a.cuda()
-				r=r.cuda()
-				done=done.cuda()
-			self.algo.update_parameters(s, ns, g, ng, a, r, done, 1, **self.td3args)
-
-
-	def update_stats(self, fitness, ep_len, gamma=0.2):
-		self.visit_count += 1
-		self.fitnesses.append(fitness)
-		self.ep_lens.append(ep_len)
-
-		if self.value == None: self.value = fitness
-		else: self.value = gamma * fitness + (1-gamma) * self.value

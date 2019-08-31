@@ -17,13 +17,12 @@
 import torch
 import torch.nn as nn
 from torch.optim import Adam
-import torch.nn.functional as F
 import numpy as np
-from core import mod_utils as utils
+from core import utils
 from core.models import Actor, Critic
 
 
-class Off_Policy_Algo(object):
+class TD3(object):
     """Classes implementing TD3 and DDPG off-policy learners
 
          Parameters:
@@ -31,9 +30,9 @@ class Off_Policy_Algo(object):
 
 
      """
-    def __init__(self, wwid, algo_name, state_dim, goal_dim, action_dim, actor_lr, critic_lr, gamma, tau, init_w = True):
+    def __init__(self, wwid, state_dim, goal_dim, action_dim, actor_lr, critic_lr, gamma, tau, polciy_noise, policy_noise_clip,policy_ups_freq):
 
-        self.algo_name = algo_name; self.gamma = gamma; self.tau = tau
+        self.gamma = gamma; self.tau = tau; self.policy_noise = polciy_noise; self.policy_noise_clip = policy_noise_clip; self.policy_ups_freq = policy_ups_freq
 
         #Initialize actors
         self.actor = Actor(state_dim, goal_dim, action_dim, wwid)
@@ -79,7 +78,7 @@ class Off_Policy_Algo(object):
         tracker['mean'].append(torch.mean(tensor).item())
         tracker['mean'].append(torch.mean(tensor).item())
 
-    def update_parameters(self, state_batch, next_state_batch, goal_batch, next_goal_batch, action_batch, reward_batch, done_batch, num_epoch=1, **kwargs):
+    def update_parameters(self, state_batch, next_state_batch, goal_batch, next_goal_batch, action_batch, reward_batch, done_batch, num_epoch=1):
         """Runs a step of Bellman upodate and policy gradient using a batch of experiences
 
              Parameters:
@@ -104,13 +103,13 @@ class Off_Policy_Algo(object):
             #Compute next q-val, next_v and target
             with torch.no_grad():
                 #Policy Noise
-                policy_noise = np.random.normal(0, kwargs['policy_noise'], (action_batch.size()[0], action_batch.size()[1]))
-                policy_noise = torch.clamp(torch.Tensor(policy_noise), -kwargs['policy_noise_clip'], kwargs['policy_noise_clip'])
+                policy_noise = np.random.normal(0, self.policy_noise, (action_batch.size()[0], action_batch.size()[1]))
+                policy_noise = torch.clamp(torch.Tensor(policy_noise), -self.policy_noise_clip, self.policy_noise_clip,)
                 if torch.cuda.is_available():
                     policy_noise = policy_noise.cuda()
 
                 #Compute next action_bacth
-                next_action_batch = self.actor_target.forward(next_state_batch, next_goal_batch) + policy_noise
+                next_action_batch = self.actor_target.clean_action(next_state_batch, next_goal_batch) + policy_noise
                 next_action_batch = torch.clamp(next_action_batch, 0,1)
 
                 #Compute Q-val and value of next state masking by done
@@ -119,8 +118,7 @@ class Off_Policy_Algo(object):
                 q2 = (1 - done_batch) * q2
 
                 #Select which q to use as next-q (depends on algo)
-                if self.algo_name == 'TD3': next_q = torch.min(q1, q2)
-                elif self.algo_name == 'DDPG': next_q = q1
+                next_q = torch.min(q1, q2)
 
                 #Compute target q and target val
                 target_q = reward_batch + (self.gamma * next_q)
@@ -132,7 +130,7 @@ class Off_Policy_Algo(object):
 
             dt = self.loss(current_q1, target_q)
 
-            if self.algo_name == 'TD3':dt = dt + self.loss(current_q2, target_q)
+            dt = dt + self.loss(current_q2, target_q)
             self.critic_loss['mean'].append(dt.item())
 
             dt.backward()
@@ -142,9 +140,9 @@ class Off_Policy_Algo(object):
 
 
             #Delayed Actor Update
-            if self.num_critic_updates % kwargs['policy_ups_freq'] == 0:
+            if self.num_critic_updates % self.policy_ups_freq == 0:
 
-                actor_actions = self.actor.forward(state_batch, goal_batch)
+                actor_actions = self.actor.clean_action(state_batch, goal_batch)
                 Q1, Q2, val = self.critic.forward(state_batch, goal_batch, actor_actions)
 
                 # if self.args.use_advantage: policy_loss = -(Q1 - val)
@@ -162,7 +160,7 @@ class Off_Policy_Algo(object):
                 self.actor_optim.step()
 
 
-            if self.num_critic_updates % kwargs['policy_ups_freq'] == 0: utils.soft_update(self.actor_target, self.actor, self.tau)
+            if self.num_critic_updates % self.policy_ups_freq == 0: utils.soft_update(self.actor_target, self.actor, self.tau)
             utils.soft_update(self.critic_target, self.critic, self.tau)
 
 
