@@ -19,7 +19,6 @@ import torch.nn as nn
 from torch.optim import Adam
 import numpy as np
 from core import utils
-from core.models import Actor, Critic
 
 
 class TD3(object):
@@ -30,21 +29,21 @@ class TD3(object):
 
 
      """
-    def __init__(self, policy_type, state_dim, goal_dim, action_dim, actor_lr, critic_lr, gamma, tau, polciy_noise, policy_noise_clip,policy_ups_freq):
+    def __init__(self, model_constructor, actor_lr, critic_lr, gamma, tau, polciy_noise, policy_noise_clip,policy_ups_freq):
 
         self.gamma = gamma; self.tau = tau; self.policy_noise = polciy_noise; self.policy_noise_clip = policy_noise_clip; self.policy_ups_freq = policy_ups_freq
 
         #Initialize actors
-        self.actor = Actor(state_dim, goal_dim, action_dim, policy_type)
+        self.actor = model_constructor.make_model('actor')
         #if init_w: self.actor.apply(utils.init_weights)
-        self.actor_target = Actor(state_dim, goal_dim, action_dim, policy_type)
+        self.actor_target = model_constructor.make_model('actor')
         utils.hard_update(self.actor_target, self.actor)
         self.actor_optim = Adam(self.actor.parameters(), actor_lr, weight_decay=0.01)
 
 
-        self.critic = Critic(state_dim, goal_dim, action_dim)
+        self.critic = model_constructor.make_model('critic')
         #if init_w: self.critic.apply(utils.init_weights)
-        self.critic_target = Critic(state_dim, goal_dim, action_dim)
+        self.critic_target = model_constructor.make_model('critic')
         utils.hard_update(self.critic_target, self.critic)
         self.critic_optim = Adam(self.critic.parameters(), critic_lr, weight_decay=0.01)
 

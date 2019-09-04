@@ -13,14 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ******************************************************************************
-
-from envs_repo.env_wrapper import L2MWrapper
 from core import utils as utils
 import numpy as np
 
 
 # Rollout evaluate an agent in a complete game
-def rollout_worker(id, type, task_pipe, result_pipe, data_bucket, model_bucket):
+def rollout_worker(id, type, task_pipe, result_pipe, data_bucket, model_bucket, env_constructor):
 	"""Rollout Worker runs a simulation in the environment to generate experiences and fitness values
 
         Parameters:
@@ -29,13 +27,13 @@ def rollout_worker(id, type, task_pipe, result_pipe, data_bucket, model_bucket):
             is_noise (bool): Use noise?
             data_bucket (list of shared object): A list of shared object reference to s,ns,a,r,done (replay buffer) managed by a manager that is used to store experience tuples
             model_bucket (shared list object): A shared list object managed by a manager used to store all the models (actors)
-			env_name (str): Environment name?
-			noise_std (float): Standard deviation of Gaussian for sampling noise
+			env_constructor (str): Environment Constructor
+
 
         Returns:
             None
     """
-	env = L2MWrapper(T=300, integrator_accuracy=5e-3)
+	env = env_constructor.make_env()
 	np.random.seed(id) ###make sure the random seeds across learners are different
 
 	###LOOP###

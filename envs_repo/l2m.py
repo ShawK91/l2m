@@ -16,7 +16,7 @@
 import numpy as np
 
 
-class L2MWrapper:
+class L2M:
     """Wrapper around the Environment to expose a cleaner interface for RL
 
         Parameters:
@@ -24,7 +24,7 @@ class L2MWrapper:
 
 
     """
-    def __init__(self, visualize=False, integrator_accuracy=5e-5, seed=0, report=None, frameskip=4, T=1000):
+    def __init__(self, visualize=False, integrator_accuracy=5e-5, frameskip=4, T=1000):
         """
         A base template for all environment wrappers.
         """
@@ -33,6 +33,11 @@ class L2MWrapper:
         self.frameskip=frameskip
         self.T=T; self.istep = 0
 
+        #Self Params
+        self.state_dim = 97
+        self.goal_dim = 72
+        self.action_dim = 22
+        self.test_size = 1
 
 
     def reset(self):

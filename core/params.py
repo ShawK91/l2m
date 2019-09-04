@@ -12,13 +12,12 @@ class Parameters:
         """
 
         #Env args
-        self.state_dim = 97
-        self.goal_dim = 72
-        self.action_dim = 22
-        self.test_size = 1
-        self.algo = algo
+        self.env_name = vars(parser.parse_args())['env']
+        self.env_args = get_env_args(self.env_name)
 
-        #COMMON ARGS
+
+        #OTHER ARGS
+        self.algo = algo
         self.total_steps = int(vars(parser.parse_args())['total_steps'] * 1000000)
         self.gradperstep = vars(parser.parse_args())['gradperstep']
         self.savetag = vars(parser.parse_args())['savetag']
@@ -33,6 +32,8 @@ class Parameters:
         self.gamma = vars(parser.parse_args())['gamma']
         self.buffer_size = int(vars(parser.parse_args())['buffer'] * 1000000)
         self.policy_type = 'DeterministicPolicy' if (algo == 'td3' or algo == 'cerl_td3') else 'GaussianPolicy'
+        self.actor_seed = None
+        self.critic_seed = None
 
 
         if algo == 'cerl_sac' or algo == 'cerl_td3':
@@ -68,3 +69,15 @@ class Parameters:
             self.savetag += '_pop' + str(self.pop_size)
             self.savetag += '_portfolio' + str(self.portfolio_id)
 
+def get_env_args(env_name):
+    args = {}
+    if env_name == 'l2m':
+
+        args['visualize'] = False
+        args['integrator_accuracy'] = 5e-5
+        args['frameskip'] = 4
+        args['T'] = 1000
+
+
+
+    return args

@@ -3,7 +3,7 @@ from osim.http.client import Client
 import numpy as np
 import torch
 from core.models import Actor
-from envs_repo.env_wrapper import L2MWrapper, flatten
+from envs_repo.l2m import L2MWrapper, flatten
 from core import utils
 
 

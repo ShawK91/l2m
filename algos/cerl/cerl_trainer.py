@@ -16,7 +16,6 @@
 
 import numpy as np, os, time, random, torch, sys
 from algos.cerl.neuroevolution import SSNE
-from core.models import Actor
 from core import utils
 from algos.cerl.ucb import ucb
 from core.runner import rollout_worker
@@ -36,8 +35,10 @@ class CERL_Trainer:
 
 	"""
 
-	def __init__(self, args):
+	def __init__(self, args, model_constructor, env_constructor):
 		self.args = args
+
+		#Evolution
 		self.evolver = SSNE(self.args)
 
 		#MP TOOLS
@@ -49,14 +50,14 @@ class CERL_Trainer:
 		#Initialize population
 		self.population = self.manager.list()
 		for _ in range(args.pop_size):
-			self.population.append(Actor(args.state_dim, args.goal_dim, args.action_dim, args.policy_type))
+			self.population.append(model_constructor.make_model('actor'))
 
 		#SEED
 		self.population[0].load_state_dict(torch.load('Results/Auxiliary/_bestcerl_td3_s2019_roll10_pop10_portfolio10'))
 
 
 		#Save best policy
-		self.best_policy = Actor(args.state_dim, args.goal_dim, args.action_dim, args.policy_type)
+		self.best_policy = model_constructor.make_model('actor')
 
 		#Turn off gradients and put in eval mod
 		for actor in self.population:
@@ -69,37 +70,37 @@ class CERL_Trainer:
 
 		#Intialize portfolio of learners
 		self.portfolio = []
-		self.portfolio = initialize_portfolio(self.portfolio, self.args, self.genealogy, args.portfolio_id)
+		self.portfolio = initialize_portfolio(self.portfolio, self.args, self.genealogy, args.portfolio_id, model_constructor)
 
 		#Initialize Rollout Bucket
 		self.rollout_bucket = self.manager.list()
 		for _ in range(len(self.portfolio)):
-			self.rollout_bucket.append(Actor(args.state_dim, args.goal_dim, args.action_dim, args.policy_type))
+			self.rollout_bucket.append(model_constructor.make_model('actor'))
 
 		############## MULTIPROCESSING TOOLS ###################
 
 		#Evolutionary population Rollout workers
 		self.evo_task_pipes = [Pipe() for _ in range(args.pop_size)]
 		self.evo_result_pipes = [Pipe() for _ in range(args.pop_size)]
-		self.evo_workers = [Process(target=rollout_worker, args=(id, 'evo', self.evo_task_pipes[id][1], self.evo_result_pipes[id][0], self.data_bucket, self.population)) for id in range(args.pop_size)]
+		self.evo_workers = [Process(target=rollout_worker, args=(id, 'evo', self.evo_task_pipes[id][1], self.evo_result_pipes[id][0], self.data_bucket, self.population, env_constructor)) for id in range(args.pop_size)]
 		for worker in self.evo_workers: worker.start()
 		self.evo_flag = [True for _ in range(args.pop_size)]
 
 		#Learner rollout workers
 		self.task_pipes = [Pipe() for _ in range(args.rollout_size)]
 		self.result_pipes = [Pipe() for _ in range(args.rollout_size)]
-		self.workers = [Process(target=rollout_worker, args=(id, 'pg', self.task_pipes[id][1], self.result_pipes[id][0], self.data_bucket, self.rollout_bucket)) for id in range(args.rollout_size)]
+		self.workers = [Process(target=rollout_worker, args=(id, 'pg', self.task_pipes[id][1], self.result_pipes[id][0], self.data_bucket, self.rollout_bucket, env_constructor)) for id in range(args.rollout_size)]
 		for worker in self.workers: worker.start()
 		self.roll_flag = [True for _ in range(args.rollout_size)]
 
 		#Test bucket
 		self.test_bucket = self.manager.list()
-		self.test_bucket.append(Actor(args.state_dim, args.goal_dim, args.action_dim, args.policy_type))
+		self.test_bucket.append(model_constructor.make_model('actor'))
 
 		#5 Test workers
-		self.test_task_pipes = [Pipe() for _ in range(args.test_size)]
-		self.test_result_pipes = [Pipe() for _ in range(args.test_size)]
-		self.test_workers = [Process(target=rollout_worker, args=(id, 'test', self.test_task_pipes[id][1], self.test_result_pipes[id][0], None, self.test_bucket)) for id in range(args.test_size)]
+		self.test_task_pipes = [Pipe() for _ in range(env_constructor.dummy_env.test_size)]
+		self.test_result_pipes = [Pipe() for _ in range(env_constructor.dummy_env.test_size)]
+		self.test_workers = [Process(target=rollout_worker, args=(id, 'test', self.test_task_pipes[id][1], self.test_result_pipes[id][0], None, self.test_bucket, env_constructor)) for id in range(env_constructor.dummy_env.test_size)]
 		for worker in self.test_workers: worker.start()
 		self.test_flag = False
 
