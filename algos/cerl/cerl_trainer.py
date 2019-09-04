@@ -51,6 +51,10 @@ class CERL_Trainer:
 		for _ in range(args.pop_size):
 			self.population.append(Actor(args.state_dim, args.goal_dim, args.action_dim, args.policy_type))
 
+		#SEED
+		self.population[0].load_state_dict(torch.load('Results/Auxiliary/_bestcerl_td3_s2019_roll10_pop10_portfolio10'))
+
+
 		#Save best policy
 		self.best_policy = Actor(args.state_dim, args.goal_dim, args.action_dim, args.policy_type)
 

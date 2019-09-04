@@ -20,12 +20,12 @@ import argparse, torch
 parser = argparse.ArgumentParser()
 
 
-#COMMON ARGS
+#######################  COMMANDLINE - ARGUMENTS ######################
 parser.add_argument('--seed', type=int, help='Seed', default=2019)
 parser.add_argument('--savetag', type=str, help='#Tag to append to savefile',  default='')
 parser.add_argument('--gpu_id', type=int, help='#GPU ID ',  default=0)
 parser.add_argument('--total_steps', type=float, help='#Total steps in the env in millions ', default=40)
-parser.add_argument('--algo', type=str, help='Which algo? - CERL_SAC, CERL_TD3, TD3, SAC ',  default='sac')
+parser.add_argument('--algo', type=str, help='Which algo? - CERL_SAC, CERL_TD3, TD3, SAC ',  default='cerl_td3')
 parser.add_argument('--buffer', type=float, help='Buffer size in million',  default=1)
 
 parser.add_argument('--critic_lr', type=float, help='Critic learning rate? - Actor', default='5e-4')
@@ -40,16 +40,24 @@ parser.add_argument('--rollsize', type=int, help='#Policies in rolout size',  de
 parser.add_argument('--gradperstep', type=float, help='#Gradient step per env step',  default=1.0)
 parser.add_argument('--portfolio', type=int, help='Portfolio ID',  default=10)
 
-
 ALGO = vars(parser.parse_args())['algo']
 #Figure out GPU to use if any
 if vars(parser.parse_args())['gpu_id'] != -1: os.environ["CUDA_VISIBLE_DEVICES"]=str(vars(parser.parse_args())['gpu_id'])
 
-#Get all arguments
+#######################  Construct ARGS Class to hold all parameters ######################
 args = Parameters(parser, ALGO)
 
 #Set seeds
 torch.manual_seed(args.seed); np.random.seed(args.seed); random.seed(args.seed)
+
+################################## Find and Set MDP (environment) ########################
+
+
+
+
+
+#######################  Construct Actor, Critic and ValueFunction Models ######################
+
 
 
 if ALGO == 'cerl_sac' or ALGO == 'cerl_td3':

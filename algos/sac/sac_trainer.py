@@ -108,15 +108,16 @@ class SAC_Trainer:
 		############# UPDATE PARAMS USING GRADIENT DESCENT ##########
 		if self.replay_buffer.__len__() > self.args.batch_size * 10: ###BURN IN PERIOD
 			self.replay_buffer.tensorify()  # Tensorify the buffer for fast sampling
-			s, ns, g, ng, a, r, done = self.replay_buffer.sample(self.args.batch_size)
-			if torch.cuda.is_available():
-				s = s.cuda()
-				ns = ns.cuda()
-				g = g.cuda()
-				ng = ng.cuda()
-				a = a.cuda()
-				r = r.cuda()
-				done = done.cuda()
+			for _ in range(self.gen_frames):
+				s, ns, g, ng, a, r, done = self.replay_buffer.sample(self.args.batch_size)
+				if torch.cuda.is_available():
+					s = s.cuda()
+					ns = ns.cuda()
+					g = g.cuda()
+					ng = ng.cuda()
+					a = a.cuda()
+					r = r.cuda()
+					done = done.cuda()
 				self.algo.update_parameters(s, ns, g, ng, a, r, done)
 
 			self.gen_frames = 0

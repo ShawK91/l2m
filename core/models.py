@@ -20,9 +20,11 @@ import torch.nn.functional as F
 from torch.distributions import Normal
 
 #SAC SPECIFIC
-LOG_SIG_MAX = 5
-LOG_SIG_MIN = -10
+LOG_SIG_MAX = 2
+LOG_SIG_MIN = -20
 epsilon = 1e-6
+
+
 
 
 class Actor(nn.Module):
@@ -34,7 +36,7 @@ class Actor(nn.Module):
     def __init__(self, num_inputs, num_goals, num_actions, policy_type):
         super(Actor, self).__init__()
 
-        self.policy_type = policy_type
+        self.policy_type = policy_type; self.num_actions = num_actions
 
         g1 = 50; h1=100; h2 =50
 
@@ -54,15 +56,15 @@ class Actor(nn.Module):
             self.log_std_linear = nn.Linear(h2, num_actions)
 
         elif self.policy_type == 'DeterministicPolicy':
-            self.noise = torch.Tensor(num_actions)
+            self.noise = Normal(0, 0.01)
 
-        self.apply(weights_init)
+        self.apply(weights_init_)
 
 
     def forward_goal_map(self, goal):
         #Goal Processing
-        goal_out = torch.relu(self.goal1(goal))
-        goal_out = torch.relu(self.goal2(goal_out))
+        goal_out = torch.tanh(self.goal1(goal))
+        goal_out = torch.tanh(self.goal2(goal_out))
         return goal_out
 
 
@@ -104,15 +106,16 @@ class Actor(nn.Module):
             log_prob = normal.log_prob(x_t)
             # Enforcing Action Bound
             log_prob -= torch.log(1 - action.pow(2) + epsilon)
-            log_prob = log_prob.sum(-1, keepdim=True)
+            log_prob = log_prob.sum(1, keepdim=True)
 
             #log_prob.clamp(-10, 0)
 
-            return action, log_prob, x_t, mean, log_std
+            return action, log_prob, torch.sigmoid(x_t), mean, log_std
 
         elif self.policy_type == 'DeterministicPolicy':
             mean = self.clean_action(state, goal)
-            action = mean + self.noise.normal_(0., std=0.01)
+            action = mean + torch.clamp(self.noise.sample((len(state), self.num_actions)), min=-0.5, max=0.5)
+
 
             if return_only_action: return action
             else: return action, torch.tensor(0.), torch.tensor(0.), mean, torch.tensor(0.)
@@ -171,6 +174,7 @@ class Critic(nn.Module):
         self.q2out = nn.Linear(l2, 1)
 
         #self.half()
+        self.apply(weights_init_)
 
 
         # ######################## Value Head ##################  [NOT USED IN CERL]
@@ -238,18 +242,13 @@ class Critic(nn.Module):
         return q1, q2, None
 
 
-# Initialize weights
-def weights_init(m):
-    classname = m.__class__.__name__
-    if classname.find('Linear') != -1:
-        torch.nn.init.xavier_uniform_(m.weight)
 
-def weights_init_policy_fn(m):
-    classname = m.__class__.__name__
-    if classname.find('Linear') != -1:
-        torch.nn.init.xavier_uniform_(m.weight, gain=0.5)
+
+# Initialize Policy weights
+def weights_init_(m):
+    if isinstance(m, nn.Linear):
+        torch.nn.init.xavier_uniform_(m.weight, gain=1)
         torch.nn.init.constant_(m.bias, 0)
-
 
 
 
@@ -274,7 +273,7 @@ class KNet(nn.Module):
         self.map1, self.entropy1 = self.init_allocation(neuron_dim, col_dim)
         self.map2, self.entropy2 = self.init_allocation(neuron_dim, col_dim)
 
-        self.apply(weights_init_policy_fn)
+        self.apply(weights_init_)
 
 
     def forward(self, input):

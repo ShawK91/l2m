@@ -39,14 +39,14 @@ class TD3(object):
         #if init_w: self.actor.apply(utils.init_weights)
         self.actor_target = Actor(state_dim, goal_dim, action_dim, policy_type)
         utils.hard_update(self.actor_target, self.actor)
-        self.actor_optim = Adam(self.actor.parameters(), actor_lr)
+        self.actor_optim = Adam(self.actor.parameters(), actor_lr, weight_decay=0.01)
 
 
         self.critic = Critic(state_dim, goal_dim, action_dim)
         #if init_w: self.critic.apply(utils.init_weights)
         self.critic_target = Critic(state_dim, goal_dim, action_dim)
         utils.hard_update(self.critic_target, self.critic)
-        self.critic_optim = Adam(self.critic.parameters(), critic_lr)
+        self.critic_optim = Adam(self.critic.parameters(), critic_lr, weight_decay=0.01)
 
         self.loss = nn.MSELoss()
 

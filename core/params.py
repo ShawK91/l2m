@@ -64,7 +64,7 @@ class Parameters:
         self.savetag += str(algo)
         self.savetag += '_s' + str(self.seed)
         self.savetag += '_roll' + str(self.rollout_size)
-        if algo == 'CERL_SAC' or algo == 'CERL_TD3':
+        if algo == 'cerl_sac' or algo == 'cerl_td3':
             self.savetag += '_pop' + str(self.pop_size)
             self.savetag += '_portfolio' + str(self.portfolio_id)
 

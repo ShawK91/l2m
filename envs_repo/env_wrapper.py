@@ -34,6 +34,7 @@ class L2MWrapper:
         self.T=T; self.istep = 0
 
 
+
     def reset(self):
         """Method overloads reset
             Parameters:
@@ -47,6 +48,11 @@ class L2MWrapper:
         goal = state_dict['v_tgt_field']
         goal = goal[:, 0::2, 0::2].flatten()
         goal = goal.reshape(1, len(goal))
+
+        if check_nan_inf(obs) or check_nan_inf(goal):
+            print(obs, goal)
+            raise Exception ('Nan or Inf encountered')
+
         return obs, goal
 
 
@@ -104,3 +110,8 @@ def flatten(d):
         res = [d]
 
     return res
+
+
+
+def check_nan_inf(array):
+    return np.isnan(array).any() or np.isinf(array).any()
