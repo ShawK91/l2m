@@ -37,6 +37,7 @@ class CERL_Trainer:
 
 	def __init__(self, args, model_constructor, env_constructor):
 		self.args = args
+		self.policy_string = self.compute_policy_type()
 
 		#Evolution
 		self.evolver = SSNE(self.args)
@@ -50,14 +51,14 @@ class CERL_Trainer:
 		#Initialize population
 		self.population = self.manager.list()
 		for _ in range(args.pop_size):
-			self.population.append(model_constructor.make_model('actor'))
+			self.population.append(model_constructor.make_model(self.policy_string))
 
 		#SEED
-		self.population[0].load_state_dict(torch.load('Results/Auxiliary/_bestcerl_td3_s2019_roll10_pop10_portfolio10'))
+		#self.population[0].load_state_dict(torch.load('Results/Auxiliary/_bestcerl_td3_s2019_roll10_pop10_portfolio10'))
 
 
 		#Save best policy
-		self.best_policy = model_constructor.make_model('actor')
+		self.best_policy = model_constructor.make_model(self.policy_string)
 
 		#Turn off gradients and put in eval mod
 		for actor in self.population:
@@ -75,7 +76,7 @@ class CERL_Trainer:
 		#Initialize Rollout Bucket
 		self.rollout_bucket = self.manager.list()
 		for _ in range(len(self.portfolio)):
-			self.rollout_bucket.append(model_constructor.make_model('actor'))
+			self.rollout_bucket.append(model_constructor.make_model(self.policy_string))
 
 		############## MULTIPROCESSING TOOLS ###################
 
@@ -95,7 +96,7 @@ class CERL_Trainer:
 
 		#Test bucket
 		self.test_bucket = self.manager.list()
-		self.test_bucket.append(model_constructor.make_model('actor'))
+		self.test_bucket.append(model_constructor.make_model(self.policy_string))
 
 		#5 Test workers
 		self.test_task_pipes = [Pipe() for _ in range(env_constructor.dummy_env.test_size)]
@@ -111,6 +112,17 @@ class CERL_Trainer:
 		#Trackers
 		self.best_score = 0.0; self.gen_frames = 0; self.total_frames = 0; self.test_score = None; self.test_std = None
 
+		self.ep_len = 0
+		self.r1_reward = 0
+		self.num_footsteps = 0
+		self.test_trace = []
+
+	def checkpoint(self):
+		utils.pickle_obj(self.args.aux_folder+self.args.algo+'_checkpoint_frames'+str(self.total_frames), self.portfolio)
+
+
+	def load_checkpoint(self, filename):
+		self.portfolio = utils.unpickle_obj(filename)
 
 
 	def forward_generation(self, gen, tracker):
@@ -144,13 +156,13 @@ class CERL_Trainer:
 				self.roll_flag[rollout_id] = False
 
 		#Start Test rollouts
-		if gen % 5 == 0:
+		if gen % 1 == 0:
 			self.test_flag = True
 			for pipe in self.test_task_pipes: pipe[0].send(0)
 
 
 		############# UPDATE PARAMS USING GRADIENT DESCENT ##########
-		if self.replay_buffer.__len__() > self.args.batch_size * 10: ###BURN IN PERIOD
+		if self.replay_buffer.__len__() > self.args.learning_start: ###BURN IN PERIOD
 			self.replay_buffer.tensorify()  # Tensorify the buffer for fast sampling
 
 			#Spin up threads for each learner
@@ -210,13 +222,21 @@ class CERL_Trainer:
 		###### TEST SCORE ######
 		if self.test_flag:
 			self.test_flag = False
-			test_scores = []
+			test_scores = []; eplens = []; r1_reward = []; num_footsteps = []
 			for pipe in self.test_result_pipes: #Collect all results
 				entry = pipe[1].recv()
 				test_scores.append(entry[1])
+				eplens.append(entry[3])
+				r1_reward.append(entry[4])
+				num_footsteps.append(entry[5])
+
 			test_scores = np.array(test_scores)
 			test_mean = np.mean(test_scores); test_std = (np.std(test_scores))
-			tracker.update([test_mean], self.total_frames)
+			self.test_trace.append(test_mean)
+			self.num_footsteps = np.mean(np.array(num_footsteps))
+			self.ep_len = np.mean(np.array(eplens))
+			self.r1_reward = np.mean(np.array(r1_reward))
+			tracker.update([test_mean, self.r1_reward], self.total_frames)
 
 		else:
 			test_mean, test_std = None, None
@@ -239,7 +259,7 @@ class CERL_Trainer:
 			#champ_wwid = int(self.pop[champ_index].wwid.item())
 			max_fit = max(all_fitness)
 		else:
-			champ_len = num_frames; champ_wwid = int(self.rollout_bucket[0].wwid.item())
+			champ_len = num_frames
 			all_fitness = [fitness]; max_fit = fitness; all_eplens = [num_frames]
 
 
@@ -248,7 +268,7 @@ class CERL_Trainer:
 
 	def train(self, frame_limit):
 		# Define Tracker class to track scores
-		test_tracker = utils.Tracker(self.args.savefolder, ['score_' + self.args.savetag], '.csv')  # Tracker class to log progress
+		test_tracker = utils.Tracker(self.args.savefolder, ['score_' + self.args.savetag, 'r1_'+self.args.savetag], '.csv')  # Tracker class to log progress
 		time_start = time.time()
 
 		for gen in range(1, 1000000000):  # Infinite generations
@@ -258,12 +278,20 @@ class CERL_Trainer:
 
 			print('Gen/Frames', gen,'/',self.total_frames, ' Pop_max/max_ever:','%.2f'%max_fitness, '/','%.2f'%self.best_score, ' Avg:','%.2f'%test_tracker.all_tracker[0][1],
 		      ' Frames/sec:','%.2f'%(self.total_frames/(time.time()-time_start)),
-			  ' Champ_len', '%.2f'%champ_len, ' Test_score u/std', utils.pprint(test_mean), utils.pprint(test_std), 'savetag', self.args.savetag)
+			  ' Champ_len', '%.2f'%champ_len, ' Test_score u/std', utils.pprint(test_mean), utils.pprint(test_std),
+			  'Ep_len', '%.2f'%self.ep_len, '#Footsteps', '%.2f'%self.num_footsteps, 'R1_Reward', '%.2f'%self.r1_reward,
+			  'savetag', self.args.savetag)
 
 			if gen % 5 == 0:
 				print('Learner Fitness', [utils.pprint(learner.value) for learner in self.portfolio],
 					  'Sum_stats_resource_allocation', [learner.visit_count for learner in self.portfolio])
-				print()
+				try:
+					print('Entropy', ['%.2f'%algo.algo.entropy['mean'] for algo in self.portfolio],
+						  'Next_Entropy', ['%.2f'%algo.algo.next_entropy['mean'] for algo in self.portfolio],
+						  'Poilcy_Q', ['%.2f'%algo.algo.policy_q['mean'] for algo in self.portfolio],
+						  'Critic_Loss', ['%.2f'%algo.algo.critic_loss['mean'] for algo in self.portfolio])
+					print()
+				except: None
 
 			if self.total_frames > frame_limit:
 				break
@@ -277,3 +305,12 @@ class CERL_Trainer:
 			None
 
 
+	def compute_policy_type(self):
+		if self.args.algo == 'ddqn':
+			return 'DDQN'
+
+		elif self.args.algo == 'sac':
+			return 'Gaussian_FF'
+
+		elif self.args.algo == 'td3':
+			return 'Deterministic_FF'

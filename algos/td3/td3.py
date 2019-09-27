@@ -34,16 +34,16 @@ class TD3(object):
         self.gamma = gamma; self.tau = tau; self.policy_noise = polciy_noise; self.policy_noise_clip = policy_noise_clip; self.policy_ups_freq = policy_ups_freq
 
         #Initialize actors
-        self.actor = model_constructor.make_model('actor')
+        self.actor = model_constructor.make_model('Deterministic_FF')
         #if init_w: self.actor.apply(utils.init_weights)
-        self.actor_target = model_constructor.make_model('actor')
+        self.actor_target = model_constructor.make_model('Deterministic_FF')
         utils.hard_update(self.actor_target, self.actor)
         self.actor_optim = Adam(self.actor.parameters(), actor_lr, weight_decay=0.01)
 
 
-        self.critic = model_constructor.make_model('critic')
+        self.critic = model_constructor.make_model('Tri_Head_Q')
         #if init_w: self.critic.apply(utils.init_weights)
-        self.critic_target = model_constructor.make_model('critic')
+        self.critic_target = model_constructor.make_model('Tri_Head_Q')
         utils.hard_update(self.critic_target, self.critic)
         self.critic_optim = Adam(self.critic.parameters(), critic_lr, weight_decay=0.01)
 
@@ -77,7 +77,7 @@ class TD3(object):
         tracker['mean'].append(torch.mean(tensor).item())
         tracker['mean'].append(torch.mean(tensor).item())
 
-    def update_parameters(self, state_batch, next_state_batch, goal_batch, next_goal_batch, action_batch, reward_batch, done_batch, num_epoch=1):
+    def update_parameters(self, state_batch, next_state_batch, action_batch, reward_batch, done_batch, num_epoch=1):
         """Runs a step of Bellman upodate and policy gradient using a batch of experiences
 
              Parameters:
@@ -94,7 +94,7 @@ class TD3(object):
          """
 
         if isinstance(state_batch, list):
-            state_batch = torch.cat(state_batch); next_state_batch = torch.cat(next_state_batch); goal_batch = torch.cat(goal_batch); next_goal_batch = torch.cat(next_goal_batch); action_batch = torch.cat(action_batch); reward_batch = torch.cat(reward_batch). done_batch = torch.cat(done_batch)
+            state_batch = torch.cat(state_batch); next_state_batch = torch.cat(next_state_batch); action_batch = torch.cat(action_batch); reward_batch = torch.cat(reward_batch). done_batch = torch.cat(done_batch)
 
         for _ in range(num_epoch):
             ########### CRITIC UPDATE ####################
@@ -108,11 +108,11 @@ class TD3(object):
                     policy_noise = policy_noise.cuda()
 
                 #Compute next action_bacth
-                next_action_batch = self.actor_target.clean_action(next_state_batch, next_goal_batch) + policy_noise
-                next_action_batch = torch.clamp(next_action_batch, 0,1)
+                next_action_batch = self.actor_target.clean_action(next_state_batch) + policy_noise
+                next_action_batch = torch.clamp(next_action_batch, -1,1)
 
                 #Compute Q-val and value of next state masking by done
-                q1, q2, _ = self.critic_target.forward(next_state_batch, next_goal_batch, next_action_batch)
+                q1, q2, _ = self.critic_target.forward(next_state_batch, next_action_batch)
                 q1 = (1 - done_batch) * q1
                 q2 = (1 - done_batch) * q2
 
@@ -124,7 +124,7 @@ class TD3(object):
 
 
             self.critic_optim.zero_grad()
-            current_q1, current_q2, current_val = self.critic.forward(state_batch, goal_batch, action_batch)
+            current_q1, current_q2, current_val = self.critic.forward(state_batch, action_batch)
             self.compute_stats(current_q1, self.q)
 
             dt = self.loss(current_q1, target_q)
@@ -141,8 +141,8 @@ class TD3(object):
             #Delayed Actor Update
             if self.num_critic_updates % self.policy_ups_freq == 0:
 
-                actor_actions = self.actor.clean_action(state_batch, goal_batch)
-                Q1, Q2, val = self.critic.forward(state_batch, goal_batch, actor_actions)
+                actor_actions = self.actor.clean_action(state_batch)
+                Q1, Q2, val = self.critic.forward(state_batch, actor_actions)
 
                 # if self.args.use_advantage: policy_loss = -(Q1 - val)
                 policy_loss = -Q1

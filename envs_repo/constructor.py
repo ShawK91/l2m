@@ -7,11 +7,12 @@ class EnvConstructor:
 
 
     """
-    def __init__(self, name, **kwargs):
+    def __init__(self, name, config, **kwargs):
         """
         A general Environment Constructor
         """
         self.name = name
+        self.config = config
         self.kwargs = kwargs
         self.dummy_env = self.make_env()
 
@@ -26,7 +27,12 @@ class EnvConstructor:
 
         if self.name == 'l2m':
             from envs_repo.l2m import L2M
-            env = L2M(self.kwargs['visualize'], self.kwargs['integrator_accuracy'], self.kwargs['frameskip'], self.kwargs['T'])
+            env = L2M(self.kwargs['visualize'], self.kwargs['integrator_accuracy'], self.kwargs['frameskip'], self.kwargs['T'], difficulty=self.kwargs['difficulty'])
+            return env
+
+        if self.name == 'gym':
+            from envs_repo.gym import GymWrapper
+            env = GymWrapper(self.config, self.kwargs['frameskip'])
             return env
 
 

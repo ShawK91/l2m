@@ -28,35 +28,28 @@ def initialize_portfolio(portfolio, args, genealogy, portfolio_id, model_constru
             portfolio (list): Portfolio of learners
     """
 
-	if portfolio_id == 10:
 
+
+	if portfolio_id == 10:
 		# Learner 1
-		wwid = genealogy.new_id('learner_1')
 		portfolio.append(
-			Learner(model_constructor, actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=0.9, tau=args.tau))
+			Learner(model_constructor, args, gamma=0.9))
 
 		# Learner 2
-		wwid = genealogy.new_id('learner_3')
 		portfolio.append(
-			Learner(model_constructor, actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=0.99, tau=args.tau))
+			Learner(model_constructor, args, gamma=0.99))
 
 		# Learner 3
-		wwid = genealogy.new_id('learner_4')
 		portfolio.append(
-			Learner(model_constructor, actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=0.997, tau=args.tau))
+			Learner(model_constructor, args, gamma=0.999))
 
-		# Learner 4
-		wwid = genealogy.new_id('learner_4')
-		portfolio.append(
-			Learner(model_constructor, actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=0.9995, tau=args.tau))
-
-		# Learner 5
-		wwid = genealogy.new_id('learner_5')
-		portfolio.append(
-			Learner(model_constructor, actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=0.9999, tau=args.tau))
-
-
-
+		# # Learner 4
+		# portfolio.append(
+		# 	Learner(model_constructor, args, gamma=0.9995))
+		#
+		# # Learner 5
+		# portfolio.append(
+		# 	Learner(model_constructor, args, gamma=1.0))
 
 
 

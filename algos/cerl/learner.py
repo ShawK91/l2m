@@ -20,9 +20,22 @@ class Learner():
 	"""Abstract Class specifying an object
 	"""
 
-	def __init__(self, model_constructor, actor_lr, critic_lr, gamma, tau):
-		from algos.td3.td3 import TD3
-		self.algo = TD3(model_constructor, actor_lr=actor_lr, critic_lr=critic_lr, gamma=gamma, tau=tau, polciy_noise=0.1, policy_noise_clip=0.2, policy_ups_freq=2)
+	def __init__(self, model_constructor, args, gamma):
+
+		if args.algo == 'td3':
+			from algos.td3.td3 import TD3
+			self.algo = TD3(model_constructor, actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=gamma, tau=args.tau, polciy_noise=0.1, policy_noise_clip=0.2, policy_ups_freq=2)
+
+		elif args.algo == 'ddqn':
+			from algos.ddqn.ddqn import DDQN
+			self.algo = DDQN(args, model_constructor, gamma)
+
+		elif args.algo == 'sac':
+			from algos.sac.sac import SAC
+			self.algo = SAC(args, model_constructor, gamma)
+
+		else:
+			Exception('Unknown algo in learner.py')
 
 		#Agent Stats
 		self.fitnesses = []
@@ -33,17 +46,15 @@ class Learner():
 
 	def update_parameters(self, replay_buffer, batch_size, iterations):
 		for _ in range(iterations):
-			s, ns, g, ng, a, r, done = replay_buffer.sample(batch_size)
+			s, ns, a, r, done = replay_buffer.sample(batch_size)
 
 			if torch.cuda.is_available():
 				s =s.cuda()
 				ns = ns.cuda()
-				g=g.cuda()
-				ng=ng.cuda()
 				a=a.cuda()
 				r=r.cuda()
 				done=done.cuda()
-			self.algo.update_parameters(s, ns, g, ng, a, r, done, 1)
+			self.algo.update_parameters(s, ns, a, r, done)
 
 
 	def update_stats(self, fitness, ep_len, gamma=0.2):

@@ -20,12 +20,12 @@ from core.runner import rollout_worker
 from torch.multiprocessing import Process, Pipe, Manager
 import torch
 from core.buffer import Buffer
-from algos.sac.sac import SAC
+from algos.td3.td3 import TD3
 
 
 
 
-class SAC_Trainer:
+class TD3_Trainer:
 	"""Main CERL class containing all methods for CERL
 
 		Parameters:
@@ -40,10 +40,10 @@ class SAC_Trainer:
 		self.manager = Manager()
 
 		#Algo
-		self.algo = SAC(args, model_constructor, args.gamma)
+		self.algo = TD3(model_constructor,  actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=args.gamma, tau=args.tau, polciy_noise=0.1, policy_noise_clip=0.2, policy_ups_freq=2)
 
-		# #Save best policy
-		# self.best_policy = model_constructor.make_model('actor')
+		#Save best policy
+		self.best_policy = model_constructor.make_model('Deterministic_FF')
 
 		#Init BUFFER
 		self.replay_buffer = Buffer(args.buffer_size)
@@ -51,7 +51,7 @@ class SAC_Trainer:
 
 		#Initialize Rollout Bucket
 		self.rollout_bucket = self.manager.list()
-		self.rollout_bucket.append(model_constructor.make_model('Gaussian_FF'))
+		self.rollout_bucket.append(model_constructor.make_model('Deterministic_FF'))
 
 		############## MULTIPROCESSING TOOLS ###################
 		#Learner rollout workers
@@ -63,7 +63,7 @@ class SAC_Trainer:
 
 		#Test bucket
 		self.test_bucket = self.manager.list()
-		self.test_bucket.append(model_constructor.make_model('Gaussian_FF'))
+		self.test_bucket.append(model_constructor.make_model('Deterministic_FF'))
 
 		#5 Test workers
 		self.test_task_pipes = [Pipe() for _ in range(env_constructor.dummy_env.test_size)]
@@ -73,12 +73,10 @@ class SAC_Trainer:
 		self.test_flag = False
 
 		#Trackers
-		self.best_score = 0.0; self.gen_frames = 0; self.total_frames = 0; self.test_score = None; self.test_std = None; self.test_trace = []; self.rollout_fits_trace = []
-
+		self.best_score = 0.0; self.gen_frames = 0; self.total_frames = 0; self.test_score = None; self.test_std = None; self.test_trace = []
 		self.ep_len = 0
 		self.r1_reward = 0
 		self.num_footsteps = 0
-
 
 	def forward_epoch(self, epoch, tracker):
 		"""Main training loop to do rollouts, neureoevolution, and policy gradients
@@ -89,14 +87,12 @@ class SAC_Trainer:
 			Returns:
 				None
 		"""
-
 		################ START ROLLOUTS ##############
 		#Sync all learners actor to cpu (rollout) actor
 		self.algo.actor.cpu()
 		utils.hard_update(self.rollout_bucket[0], self.algo.actor)
 		utils.hard_update(self.test_bucket[0], self.algo.actor)
 		self.algo.actor.cuda()
-
 
 		# Start Learner rollouts
 		for rollout_id in range(self.args.rollout_size):
@@ -123,8 +119,8 @@ class SAC_Trainer:
 					done = done.cuda()
 					r = r * self.args.reward_scaling
 				self.algo.update_parameters(s, ns, a, r, done)
-		self.gen_frames = 0
 
+			self.gen_frames = 0
 
 
 		########## HARD -JOIN ROLLOUTS FOR LEARNER ROLLOUTS ############
@@ -132,10 +128,9 @@ class SAC_Trainer:
 			for i in range(self.args.rollout_size):
 				entry = self.result_pipes[i][1].recv()
 				learner_id = entry[0]; fitness = entry[1]; num_frames = entry[2]
-				self.rollout_fits_trace.append(fitness)
 
 				self.gen_frames += num_frames; self.total_frames += num_frames
-
+				if fitness > self.best_score: self.best_score = fitness
 
 				self.roll_flag[i] = True
 
@@ -162,28 +157,15 @@ class SAC_Trainer:
 			self.r1_reward = np.mean(np.array(r1_reward))
 			tracker.update([test_mean, self.r1_reward], self.total_frames)
 
-			if self.r1_reward > self.best_score:
-				self.best_score = self.r1_reward
-				torch.save(self.test_bucket[0].state_dict(), self.args.aux_folder + 'bestR1_' + self.args.savetag)
-				print("Best R1 Policy saved with score", '%.2f' %self.r1_reward)
-
 		else:
 			test_mean, test_std = None, None
-
-
-		if epoch % 20 == 0:
-		#Save models
-			torch.save(self.algo.actor.state_dict(), self.args.aux_folder + 'actor_' + self.args.savetag)
-			torch.save(self.algo.critic.state_dict(), self.args.aux_folder + 'critic_' + self.args.savetag)
-			print("Actor and Critic saved")
-
 
 		return test_mean, test_std
 
 
 	def train(self, frame_limit):
 		# Define Tracker class to track scores
-		test_tracker = utils.Tracker(self.args.savefolder, ['shaped_' + self.args.savetag, 'r1_'+self.args.savetag], '.csv')  # Tracker class to log progress
+		test_tracker = utils.Tracker(self.args.savefolder, ['score_' + self.args.savetag, 'r1_'+self.args.savetag], '.csv')  # Tracker class to log progress
 		time_start = time.time()
 
 		for gen in range(1, 1000000000):  # Infinite generations
@@ -193,16 +175,16 @@ class SAC_Trainer:
 
 			print('Gen/Frames', gen,'/',self.total_frames, 'max_ever:','%.2f'%self.best_score, ' Avg:','%.2f'%test_tracker.all_tracker[0][1],
 		      ' Frames/sec:','%.2f'%(self.total_frames/(time.time()-time_start)),
-			   ' Test/RolloutScore', '%.2f'%self.test_trace[-1], '%.2f'% self.rollout_fits_trace[-1],
-				  'Ep_len', '%.2f'%self.ep_len, '#Footsteps', '%.2f'%self.num_footsteps, 'R1_Reward', '%.2f'%self.r1_reward,
+			   ' Test Trace', ['%.2f'% i for i in self.test_trace[-5:]],
+				  				  'Ep_len', '%.2f'%self.ep_len, '#Footsteps', '%.2f'%self.num_footsteps, 'R1_Reward', '%.2f'%self.r1_reward,
 				  'savetag', self.args.savetag)
 
-			if gen % 5 == 0:
-				print()
-
-				print('Entropy', self.algo.entropy['mean'], 'Next_Entropy', self.algo.next_entropy['mean'], 'Poilcy_Q', self.algo.policy_q['mean'], 'Critic_Loss', self.algo.critic_loss['mean'])
-
-				print()
+			# if gen % 5 == 0:
+			# 	print()
+			#
+			# 	print('Entropy', self.algo.entropy, 'Next_Entropy', self.algo.next_entropy, 'Poilcy_Q', self.algo.policy_q, 'Critic_Loss', self.algo.critic_loss)
+			#
+			# 	print()
 
 			if self.total_frames > frame_limit:
 				break

@@ -33,6 +33,7 @@ def rollout_worker(id, type, task_pipe, result_pipe, data_bucket, model_bucket, 
         Returns:
             None
     """
+
 	env = env_constructor.make_env()
 	np.random.seed(id) ###make sure the random seeds across learners are different
 
@@ -44,44 +45,43 @@ def rollout_worker(id, type, task_pipe, result_pipe, data_bucket, model_bucket, 
 		# Get the requisite network
 		net = model_bucket[identifier]
 
-		fitness = 0.0;
+		fitness = 0.0
 		total_frame = 0
-		state, goal = env.reset()
+		state = env.reset()
 		rollout_trajectory = []
-		state = utils.to_tensor(state); goal = utils.to_tensor(goal)
+		state = utils.to_tensor(state)
 		while True:  # unless done
 
-			if type == 'pg': action = net.noisy_action(state, goal)
-			else: action = net.clean_action(state, goal)
+			if type == 'pg': action = net.noisy_action(state)
+			else: action = net.clean_action(state)
+
+			#if type == 'test':
+				#print(action)
+
+			#print(type, action)
+
 
 			action = utils.to_numpy(action)
 
-			next_state, next_goal, reward, done, info = env.step(action.flatten())  # Simulate one step in environment
-
+			next_state, reward, done, info = env.step(action.flatten())  # Simulate one step in environment
 
 			next_state = utils.to_tensor(next_state)
-			next_goal = utils.to_tensor(next_goal)
 			fitness += reward
 
 			# If storing transitions
 			if data_bucket != None: #Skip for test set
 				rollout_trajectory.append([utils.to_numpy(state), utils.to_numpy(next_state),
-										   utils.to_numpy(goal), utils.to_numpy(next_goal),
 				                        np.float32(action), np.reshape(np.float32(np.array([reward])), (1, 1)),
 				                           np.reshape(np.float32(np.array([float(done)])), (1, 1))])
 			state = next_state
-			goal = next_goal
-			total_frame += 4
+			total_frame += 1
 
 			# DONE FLAG IS Received
 			if done:
-
 				# Push experiences to main
 				for entry in rollout_trajectory:
 					data_bucket.append(entry)
-
-
 				break
 
 		# Send back id, fitness, total length and shaped fitness using the result pipe
-		result_pipe.send([identifier, fitness, total_frame])
+		result_pipe.send([identifier, fitness, total_frame, env.istep, env.r1_reward, env.num_footsteps])

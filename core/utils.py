@@ -18,6 +18,8 @@ from torch import nn
 from torch.autograd import Variable
 import random, pickle, copy, argparse
 import numpy as np, torch, os
+from torch import distributions
+import torch.nn.functional as F
 
 class Tracker(): #Tracker
     """Tracker class to log progress and save metrics periodically
@@ -36,7 +38,7 @@ class Tracker(): #Tracker
         self.foldername = save_folder
         self.all_tracker = [[[],0.0,[]] for _ in vars_string] #[Id of var tracked][fitnesses, avg_fitness, csv_fitnesses]
         self.counter = 0
-        self.conv_size = 1
+        self.conv_size = 50
         if not os.path.exists(self.foldername):
             os.makedirs(self.foldername)
 
@@ -73,6 +75,35 @@ class Tracker(): #Tracker
                 filename = self.foldername + self.vars_string[i] + self.project_string
                 np.savetxt(filename, np.array(var[2]), fmt='%.3f', delimiter=',')
 
+class GumbelSoftmax(distributions.RelaxedOneHotCategorical):
+    '''
+    A differentiable Categorical distribution using reparametrization trick with Gumbel-Softmax
+    Explanation http://amid.fish/assets/gumbel.html
+    NOTE: use this in place PyTorch's RelaxedOneHotCategorical distribution since its log_prob is not working right (returns positive values)
+    Papers:
+    [1] The Concrete Distribution: A Continuous Relaxation of Discrete Random Variables (Maddison et al, 2017)
+    [2] Categorical Reparametrization with Gumbel-Softmax (Jang et al, 2017)
+    '''
+
+    def sample(self, sample_shape=torch.Size()):
+        '''Gumbel-softmax sampling. Note rsample is inherited from RelaxedOneHotCategorical'''
+        u = torch.empty(self.logits.size(), device=self.logits.device, dtype=self.logits.dtype).uniform_(0, 1)
+        noisy_logits = self.logits - torch.log(-torch.log(u))
+        return torch.argmax(noisy_logits, dim=-1)
+
+    def log_prob(self, value):
+        '''value is one-hot or relaxed'''
+        if value.shape != self.logits.shape:
+            value = F.one_hot(value.long(), self.logits.shape[-1]).float()
+            assert value.shape == self.logits.shape
+        return - torch.sum(- value * F.log_softmax(self.logits, -1), -1)
+
+
+# Initialize Policy weights
+def weights_init_(m, lin_gain=1.0, bias_gain=0.1):
+    if isinstance(m, nn.Linear):
+        torch.nn.init.xavier_uniform_(m.weight, gain=lin_gain)
+        torch.nn.init.constant_(m.bias, bias_gain)
 
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -96,12 +127,6 @@ def hard_update(target, source):
 
     for target_param, param in zip(target.parameters(), source.parameters()):
         target_param.data.copy_(param.data)
-
-    #Signature transfer if applicable
-    try:
-        target.wwid[0] = source.wwid[0]
-    except:
-	    None
 
 
 def soft_update(target, source, tau):
@@ -211,6 +236,7 @@ def pprint(l):
 
     if isinstance(l, list):
         if len(l) == 0: return None
+        else: return ['%.2f'%i for i in l]
     else:
         if l == None: return None
         else: return '%.2f'%l
