@@ -7,7 +7,7 @@ from core import utils
 from envs_repo.l2m import L2MRemote, L2M
 
 FRAMESKIP = 4
-seed = 'Results/Auxiliary/bestR1__sac_seed2019_roll10'
+seed = 'Results/Auxiliary/_bestR1__sac_cerl_seed2019_roll10_diff0_pop20_portfolio10_scheme_multipoint'
 
 model_constructor = ModelConstructor(169, 22, actor_seed=seed, critic_seed=None)
 net = model_constructor.make_model('Gaussian_FF', seed=True)
@@ -33,14 +33,16 @@ def submit_server():
         action = net.clean_action(state).detach()
         hack_action = []
         for i in range(22):
-            hack_action.append((action[0,i].item()+1)/2.0)
+            action_i = action[0, i].item()
+            #action_i = (action_i+1.0)/2.0
+            hack_action.append(action_i)
 
         state, reward, done, info = env.step(hack_action)
         state = torch.Tensor(state)
         total_reward+= reward
 
 
-        print(time, '%.2f'%total_reward, utils.pprint(hack_action))
+        print(time, '%.2f'%total_reward, ['%.2f'%act for act in hack_action])
 
         if done:
             state, experiment_done = env.reset()
@@ -54,7 +56,7 @@ def submit_server():
 
 def test_locally():
 
-    env = L2M(frameskip=FRAMESKIP)
+    env = L2M(frameskip=FRAMESKIP, difficulty=0)
     state = torch.Tensor(env.reset())
 
     time = 0; total_reward = 0
@@ -64,13 +66,15 @@ def test_locally():
         action = net.clean_action(state).detach()
         hack_action = []
         for i in range(22):
-            hack_action.append(action[0,i].item())
+            action_i = action[0, i].item()
+            #action_i = (action_i + 1.0) / 2.0
+            hack_action.append(action_i)
 
         state, reward, done, info = env.step(hack_action)
         state = torch.Tensor(state)
         total_reward += reward
 
-        print('Local Test', time, '%.2f' % env.r1_reward, utils.pprint(hack_action))
+        print('Local Test', time, 'R1_Reward','%.2f' % env.r1_reward, 'Shaped_Reward','%.2f' % total_reward, utils.pprint(hack_action))
 
         if done:
             break

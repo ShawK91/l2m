@@ -27,7 +27,7 @@ class EnvConstructor:
 
         if self.name == 'l2m':
             from envs_repo.l2m import L2M
-            env = L2M(self.kwargs['visualize'], self.kwargs['integrator_accuracy'], self.kwargs['frameskip'], self.kwargs['T'], difficulty=self.kwargs['difficulty'])
+            env = L2M(self.kwargs['visualize'], self.kwargs['integrator_accuracy'], self.kwargs['frameskip'], self.kwargs['T'], self.kwargs['action_clamp'], difficulty=self.kwargs['difficulty'])
             return env
 
         if self.name == 'gym':

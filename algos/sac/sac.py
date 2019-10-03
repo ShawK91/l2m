@@ -13,7 +13,7 @@ class SAC(object):
         self.alpha = args.alpha
 
         self.target_update_interval = args.target_update_interval
-        self.automatic_entropy_tuning = True
+        self.automatic_entropy_tuning = False
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -76,7 +76,7 @@ class SAC(object):
             next_state_action, next_state_log_pi,_,_,_= self.actor.noisy_action(next_state_batch,  return_only_action=False)
             qf1_next_target, qf2_next_target,_ = self.critic_target.forward(next_state_batch, next_state_action)
             min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - self.alpha * next_state_log_pi
-            next_q_value = reward_batch + self.gamma * (min_qf_next_target)
+            next_q_value = reward_batch + (1-done_batch) * self.gamma * (min_qf_next_target)
             self.compute_stats(next_state_log_pi, self.next_entropy)
 
         qf1, qf2,_ = self.critic.forward(state_batch, action_batch)  # Two Q-functions to mitigate positive bias in the policy improvement step

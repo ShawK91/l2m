@@ -37,6 +37,13 @@ class ModelConstructor:
                 model.load_state_dict(torch.load(self.actor_seed))
                 print('Actor seeded from', self.actor_seed)
 
+        elif type == 'Gumbel_FF':
+            from models.feedforward import Gumbel_FF
+            model = Gumbel_FF(self.state_dim, self.action_dim, num_heads=3)
+            if seed:
+                model.load_state_dict(torch.load(self.actor_seed))
+                print('Gumbel_FF seeded from', self.actor_seed)
+
         elif type == 'Tri_Head_Q':
             from models.feedforward import Tri_Head_Q
             model = Tri_Head_Q(self.state_dim, self.action_dim)

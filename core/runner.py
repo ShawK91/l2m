@@ -55,11 +55,6 @@ def rollout_worker(id, type, task_pipe, result_pipe, data_bucket, model_bucket, 
 			if type == 'pg': action = net.noisy_action(state)
 			else: action = net.clean_action(state)
 
-			#if type == 'test':
-				#print(action)
-
-			#print(type, action)
-
 
 			action = utils.to_numpy(action)
 

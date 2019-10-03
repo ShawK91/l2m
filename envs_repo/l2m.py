@@ -25,7 +25,7 @@ class L2M:
 
 
     """
-    def __init__(self, visualize=False, integrator_accuracy=5e-5, frameskip=4, T=1000, difficulty=0):
+    def __init__(self, visualize=False, integrator_accuracy=5e-5, frameskip=4, T=1000, action_clamp=True, difficulty=2):
         """
         A base template for all environment wrappers.
         """
@@ -33,6 +33,7 @@ class L2M:
         self.env = L2M2019Env(visualize=visualize, integrator_accuracy=integrator_accuracy, seed=0, report=None, difficulty=difficulty)
         self.frameskip=frameskip
         self.T=T; self.istep = 0
+        self.action_clamp = action_clamp
 
         #Self Params
         self.state_dim = 169
@@ -63,7 +64,6 @@ class L2M:
         obs = flatten(state_dict)
         goal = state_dict['v_tgt_field']
         goal = goal[:, 0::2, 0::2].flatten()
-
         state = np.concatenate((obs, goal))
         state = np.expand_dims(state, 0)
 
@@ -88,10 +88,12 @@ class L2M:
                 info (None): Template from OpenAi gym (doesnt have anything)
         """
 
-        bounded_action = (action + 1.0) / 2.0  # Tanh --> Sigmoid
+        if self.action_clamp:
+            bounded_action = (action + 1.0) / 2.0  # Tanh --> Sigmoid
+        else:
+            bounded_action = action
         reward = 0.0; done=False
         for _ in range(self.frameskip):
-            if done: continue
             self.istep += 1
 
             next_state_dict, rew, done, info = self.env.step(bounded_action)
@@ -173,7 +175,7 @@ class L2MRemote:
         """
 
         reward = 0.0
-        action = (action + 1.0) / 2.0  # Tanh --> Sigmoid
+        #action = (action + 1.0) / 2.0  # Tanh --> Sigmoid
         for _ in range(self.frameskip):
             next_state_dict, rew, done, info = self.client.env_step(action)
             reward += rew
@@ -191,7 +193,7 @@ class L2MRemote:
 def process_dict(dict):
     obs = flatten(dict)
     goal = dict['v_tgt_field']
-    print(goal)
+    #print(goal)
     if isinstance(goal, list): goal = np.array(goal)
     goal = goal[:, 0::2, 0::2].flatten()
 

@@ -30,15 +30,16 @@ parser.add_argument('--total_steps', type=float, help='#Total steps in the env i
 parser.add_argument('--buffer', type=float, help='Buffer size in million',  default=1.0)
 parser.add_argument('--env', type=str, help='Env Name',  default='l2m')
 parser.add_argument('--config', type=str, help='Config Name',  default='')
-parser.add_argument('--difficulty', type=int, help='Difficulty Level',  default='0')
-parser.add_argument('--algo', type=str, help='Which algo? - CERL_SAC, CERL_TD3, TD3, SAC ',  default='sac')
+parser.add_argument('--difficulty', type=int, help='Difficulty Level',  default=2)
+parser.add_argument('--action_clamp', type=utils.str2bool, help='Clamp action?',  default=True)
+parser.add_argument('--algo', type=str, help='Which algo? - CERL_SAC, CERL_TD3, TD3, SAC ',  default='sac_discrete')
 parser.add_argument('--cerl', type=utils.str2bool, help='#Use CERL?',  default=False)
 
-parser.add_argument('--critic_lr', type=float, help='Critic learning rate?', default=5e-4)
-parser.add_argument('--actor_lr', type=float, help='Actor learning rate?', default=5e-4)
-parser.add_argument('--tau', type=float, help='Tau', default=5e-4)
+parser.add_argument('--critic_lr', type=float, help='Critic learning rate?', default=1e-3)
+parser.add_argument('--actor_lr', type=float, help='Actor learning rate?', default=1e-3)
+parser.add_argument('--tau', type=float, help='Tau', default=1e-3)
 parser.add_argument('--gamma', type=float, help='Discount Rate', default=0.99)
-parser.add_argument('--batchsize', type=int, help='Seed',  default=256)
+parser.add_argument('--batchsize', type=int, help='Seed',  default=512)
 parser.add_argument('--reward_scale', type=float, help='Reward Scaling Multiplier',  default=1.0)
 parser.add_argument('--learning_start', type=int, help='Frames to wait before learning starts',  default=5000)
 
@@ -46,6 +47,7 @@ parser.add_argument('--learning_start', type=int, help='Frames to wait before le
 
 parser.add_argument('--popsize', type=int, help='#Policies in the population',  default=10)
 parser.add_argument('--rollsize', type=int, help='#Policies in rollout size',  default=10)
+parser.add_argument('--scheme', type=str, help='#Neuroevolution Scheme? standard Vs. multipoint',  default='standard')
 parser.add_argument('--gradperstep', type=float, help='#Gradient step per env step',  default=1.0)
 parser.add_argument('--portfolio', type=int, help='Portfolio ID',  default=10)
 
@@ -83,9 +85,9 @@ else:
 		ai = SAC_Trainer(args, model_constructor, env_constructor)
 		ai.train(args.total_steps)
 
-	elif ALGO == 'softq':
-		from algos.softq.softq_trainer import SoftQ_Trainer
-		ai = SoftQ_Trainer(args, model_constructor, env_constructor)
+	elif ALGO == 'sac_discrete':
+		from algos.sac_discrete.sac_discrete_trainer import SAC_Discrete_Trainer
+		ai = SAC_Discrete_Trainer(args, model_constructor, env_constructor)
 		ai.train(args.total_steps)
 
 	elif ALGO == 'ddqn':

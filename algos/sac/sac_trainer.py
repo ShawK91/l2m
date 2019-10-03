@@ -112,7 +112,6 @@ class SAC_Trainer:
 
 		############# UPDATE PARAMS USING GRADIENT DESCENT ##########
 		if self.replay_buffer.__len__() > self.args.learning_start: ###BURN IN PERIOD
-			self.replay_buffer.tensorify()  # Tensorify the buffer for fast sampling
 			for _ in range(self.gen_frames):
 				s, ns, a, r, done = self.replay_buffer.sample(self.args.batch_size)
 				if torch.cuda.is_available():

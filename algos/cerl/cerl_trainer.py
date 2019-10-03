@@ -111,7 +111,7 @@ class CERL_Trainer:
 
 		#Trackers
 		self.best_score = 0.0; self.gen_frames = 0; self.total_frames = 0; self.test_score = None; self.test_std = None
-
+		self.best_r1_score = 0.0
 		self.ep_len = 0
 		self.r1_reward = 0
 		self.num_footsteps = 0
@@ -163,7 +163,6 @@ class CERL_Trainer:
 
 		############# UPDATE PARAMS USING GRADIENT DESCENT ##########
 		if self.replay_buffer.__len__() > self.args.learning_start: ###BURN IN PERIOD
-			self.replay_buffer.tensorify()  # Tensorify the buffer for fast sampling
 
 			#Spin up threads for each learner
 			threads = [threading.Thread(target=learner.update_parameters, args=(self.replay_buffer, self.args.batch_size, int(self.gen_frames * self.args.gradperstep))) for learner in
@@ -202,8 +201,6 @@ class CERL_Trainer:
 
 				self.roll_flag[i] = True
 
-			#Referesh buffer (housekeeping tasks - pruning to keep under capacity)
-			self.replay_buffer.referesh()
 		######################### END OF PARALLEL ROLLOUTS ################
 
 		############ PROCESS MAX FITNESS #############
@@ -213,7 +210,7 @@ class CERL_Trainer:
 			if max(all_fitness) > self.best_score:
 				self.best_score = max(all_fitness)
 				utils.hard_update(self.best_policy, self.population[champ_index])
-				torch.save(self.population[champ_index].state_dict(), self.args.aux_folder + '_best'+self.args.savetag)
+				torch.save(self.population[champ_index].state_dict(), self.args.aux_folder + '_bestShaped'+self.args.savetag)
 				print("Best policy saved with score", '%.2f'%max(all_fitness))
 
 		else: #Run PG in isolation
@@ -236,18 +233,29 @@ class CERL_Trainer:
 			self.num_footsteps = np.mean(np.array(num_footsteps))
 			self.ep_len = np.mean(np.array(eplens))
 			self.r1_reward = np.mean(np.array(r1_reward))
+			if self.r1_reward > self.best_r1_score:
+				self.best_r1_score = self.r1_reward
+				utils.hard_update(self.best_policy, self.population[champ_index])
+				torch.save(self.population[champ_index].state_dict(), self.args.aux_folder + '_bestR1_'+self.args.savetag)
+				print("Best R1 policy saved with score", '%.2f'%self.r1_reward)
+
 			tracker.update([test_mean, self.r1_reward], self.total_frames)
 
 		else:
 			test_mean, test_std = None, None
 
+		# Referesh buffer (housekeeping tasks - pruning to keep under capacity)
+		self.replay_buffer.referesh()
+
 
 		#NeuroEvolution's probabilistic selection and recombination step
 		if self.args.pop_size > 1:
-			if gen % 5 == 0:
-				self.evolver.epoch(gen, self.genealogy, self.population, all_net_ids, all_fitness, self.rollout_bucket)
-			else:
-				self.evolver.epoch(gen, self.genealogy, self.population, all_net_ids, all_fitness, [])
+			if self.args.scheme == 'multipoint':
+				sample_size = self.args.batch_size if self.replay_buffer.__len__() >= self.args.batch_size else self.replay_buffer.__len__()
+				states, _,_,_,_ = self.replay_buffer.sample(batch_size=sample_size)
+			else: states = None
+			self.evolver.epoch(self.population, all_net_ids, all_fitness, self.rollout_bucket, states)
+
 
 		#META LEARNING - RESET ALLOCATION USING UCB
 		if self.args.rollout_size > 0: self.allocation = ucb(len(self.allocation), self.portfolio, self.args.ucb_coefficient)
