@@ -152,9 +152,11 @@ class Gumbel_FF(nn.Module):
             action.append(raw_action.argmax(1).unsqueeze(1))
 
 
+
             if not return_only_action: log_prob.append(dist.log_prob(raw_action).t()[:,0:1])
 
         action = torch.cat(action, 1).float()
+        action -= 1 #Translate 0,1,2 to -1,0,1
         if return_only_action: return action
 
         log_prob = torch.cat(log_prob, 1).mean(1).unsqueeze(1)

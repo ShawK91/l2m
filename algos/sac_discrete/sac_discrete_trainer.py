@@ -75,7 +75,9 @@ class SAC_Discrete_Trainer:
 		#Trackers
 		self.best_score = 0.0; self.gen_frames = 0; self.total_frames = 0; self.test_score = None; self.test_std = None; self.test_trace = []; self.rollout_fits_trace = []
 
-
+		self.ep_len = 0
+		self.r1_reward = 0
+		self.num_footsteps = 0
 
 
 	def forward_epoch(self, epoch, tracker):
@@ -146,24 +148,42 @@ class SAC_Discrete_Trainer:
 		###### TEST SCORE ######
 		if self.test_flag:
 			self.test_flag = False
-			test_scores = []
+			test_scores = []; eplens = []; r1_reward = []; num_footsteps = []
 			for pipe in self.test_result_pipes: #Collect all results
 				entry = pipe[1].recv()
 				test_scores.append(entry[1])
+				eplens.append(entry[3])
+				r1_reward.append(entry[4])
+				num_footsteps.append(entry[5])
+
 			test_scores = np.array(test_scores)
 			test_mean = np.mean(test_scores); test_std = (np.std(test_scores))
 			self.test_trace.append(test_mean)
-			tracker.update([test_mean], self.total_frames)
+			self.num_footsteps = np.mean(np.array(num_footsteps))
+			self.ep_len = np.mean(np.array(eplens))
+			self.r1_reward = np.mean(np.array(r1_reward))
+			tracker.update([test_mean, self.r1_reward], self.total_frames)
+
+			if self.r1_reward > self.best_score:
+				self.best_score = self.r1_reward
+				torch.save(self.test_bucket[0].state_dict(), self.args.aux_folder + 'bestR1_' + self.args.savetag)
+				print("Best R1 Policy saved with score", '%.2f' %self.r1_reward)
 
 		else:
 			test_mean, test_std = None, None
+
+		if epoch % 20 == 0:
+		#Save models
+			torch.save(self.algo.actor.state_dict(), self.args.aux_folder + 'actor_' + self.args.savetag)
+			torch.save(self.algo.critic.state_dict(), self.args.aux_folder + 'critic_' + self.args.savetag)
+			print("Actor and Critic saved")
 
 		return test_mean, test_std
 
 
 	def train(self, frame_limit):
 		# Define Tracker class to track scores
-		test_tracker = utils.Tracker(self.args.savefolder, ['score_' + self.args.savetag], '.csv')  # Tracker class to log progress
+		test_tracker = utils.Tracker(self.args.savefolder, ['score_' + self.args.savetag, 'r1_'+self.args.savetag], '.csv')  # Tracker class to log progress
 		time_start = time.time()
 
 		for gen in range(1, 1000000000):  # Infinite generations
@@ -173,7 +193,8 @@ class SAC_Discrete_Trainer:
 
 			print('Gen/Frames', gen,'/',self.total_frames, 'max_ever:','%.2f'%self.best_score, ' Avg:','%.2f'%test_tracker.all_tracker[0][1],
 		      ' Frames/sec:','%.2f'%(self.total_frames/(time.time()-time_start)),
-			   ' Test/RolloutScore', ['%.2f'% i for i in self.test_trace[-1:]], '%.2f'% self.rollout_fits_trace[-1], 'savetag', self.args.savetag)
+			   ' Test/RolloutScore', ['%.2f'% i for i in self.test_trace[-1:]], '%.2f'% self.rollout_fits_trace[-1],
+				   'Ep_len', '%.2f'%self.ep_len, '#Footsteps', '%.2f'%self.num_footsteps, 'R1_Reward', '%.2f'%self.r1_reward, 'savetag', self.args.savetag)
 
 			if gen % 5 == 0:
 				print()
