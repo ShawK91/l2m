@@ -30,9 +30,9 @@ parser.add_argument('--total_steps', type=float, help='#Total steps in the env i
 parser.add_argument('--buffer', type=float, help='Buffer size in million',  default=1.0)
 parser.add_argument('--env', type=str, help='Env Name',  default='l2m')
 parser.add_argument('--config', type=str, help='Config Name',  default='')
-parser.add_argument('--difficulty', type=int, help='Difficulty Level',  default=2)
-parser.add_argument('--action_clamp', type=utils.str2bool, help='Clamp action?',  default=True)
-parser.add_argument('--algo', type=str, help='Which algo? - CERL_SAC, CERL_TD3, TD3, SAC ',  default='sac_discrete')
+parser.add_argument('--difficulty', type=int, help='Difficulty Level',  default=3)
+parser.add_argument('--action_clamp', type=utils.str2bool, help='Clamp action?',  default=False)
+parser.add_argument('--algo', type=str, help='Which algo? - CERL_SAC, CERL_TD3, TD3, SAC ',  default='sac')
 parser.add_argument('--cerl', type=utils.str2bool, help='#Use CERL?',  default=False)
 
 parser.add_argument('--critic_lr', type=float, help='Critic learning rate?', default=1e-3)
@@ -45,7 +45,7 @@ parser.add_argument('--learning_start', type=int, help='Frames to wait before le
 
 #ALGO SPECIFIC ARGS
 
-parser.add_argument('--popsize', type=int, help='#Policies in the population',  default=10)
+parser.add_argument('--popsize', type=int, help='#Policies in the population',  default=30)
 parser.add_argument('--rollsize', type=int, help='#Policies in rollout size',  default=10)
 parser.add_argument('--scheme', type=str, help='#Neuroevolution Scheme? standard Vs. multipoint',  default='standard')
 parser.add_argument('--gradperstep', type=float, help='#Gradient step per env step',  default=1.0)

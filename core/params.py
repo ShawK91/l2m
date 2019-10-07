@@ -48,7 +48,7 @@ class Parameters:
 
             #Non-Args Params
             self.ucb_coefficient = 0.9 #Exploration coefficient in UCB
-            self.elite_fraction = 0.2
+            self.elite_fraction = 0.15
             self.crossover_prob = 0.15
             self.mutation_prob = 0.90
             self.extinction_prob = 0.005  # Probability of extinction event
@@ -57,8 +57,8 @@ class Parameters:
             self.mut_distribution = 1  # 1-Gaussian, 2-Laplace, 3-Uniform
             self.lineage_depth = 10
             self.ccea_reduction = 'leniency'
-            self.num_anchors = 4
-            self.num_blends = 3
+            self.num_anchors = 7
+            self.num_blends = 2
             self.scheme = vars(parser.parse_args())['scheme']
 
 

@@ -7,7 +7,7 @@ from core import utils
 from envs_repo.l2m import L2MRemote, L2M
 
 FRAMESKIP = 4
-seed = 'Results/Auxiliary/_bestR1__sac_cerl_seed2019_roll10_diff0_pop20_portfolio10_scheme_multipoint'
+seed = 'models_backup/r1/seed_r1'
 
 model_constructor = ModelConstructor(169, 22, actor_seed=seed, critic_seed=None)
 net = model_constructor.make_model('Gaussian_FF', seed=True)
@@ -34,6 +34,7 @@ def submit_server():
         hack_action = []
         for i in range(22):
             action_i = action[0, i].item()
+            if action_i < 0: action_i = 0.0
             #action_i = (action_i+1.0)/2.0
             hack_action.append(action_i)
 
@@ -56,7 +57,7 @@ def submit_server():
 
 def test_locally():
 
-    env = L2M(frameskip=FRAMESKIP, difficulty=0)
+    env = L2M(frameskip=FRAMESKIP, difficulty=3, action_clamp=False)
     state = torch.Tensor(env.reset())
 
     time = 0; total_reward = 0
@@ -67,21 +68,25 @@ def test_locally():
         hack_action = []
         for i in range(22):
             action_i = action[0, i].item()
-            #action_i = (action_i + 1.0) / 2.0
+            #action_i = (action_i+1.0)/2.0
+            if action_i < 0: action_i = 0.0
+            # if action_i < -0.5: action_i = -1.0
+            # elif action_i > 0.5: action_i = 1.0
+            # else: action_i = 0.0
             hack_action.append(action_i)
 
         state, reward, done, info = env.step(hack_action)
         state = torch.Tensor(state)
         total_reward += reward
 
-        print('Local Test', time, 'R1_Reward','%.2f' % env.r1_reward, 'Shaped_Reward','%.2f' % total_reward, utils.pprint(hack_action))
+        print('Seed', seed, 'Local Test', time, 'R1_Reward','%.2f' % env.r1_reward, 'Shaped_Reward','%.2f' % total_reward, utils.pprint(hack_action))
 
         if done:
             break
 
 
-test_locally()
-#submit_server()
+#test_locally()
+submit_server()
 # client = Client(remote_base)
 # env = L2MRemote(client, aicrowd_token, frameskip=FRAMESKIP)
 # state = torch.Tensor(env.first_state)

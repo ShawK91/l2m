@@ -17,7 +17,7 @@
 import torch
 import torch.nn as nn
 from torch.distributions import Normal, Cauchy, RelaxedOneHotCategorical
-from core.utils import weights_init_
+from core.utils import weights_init_, random
 
 class Gumbel_FF(nn.Module):
     """Actor model
@@ -25,11 +25,14 @@ class Gumbel_FF(nn.Module):
               args (object): Parameter class
     """
 
-    def __init__(self, num_inputs, num_actions, num_heads=3):
+    def __init__(self, num_inputs, num_actions, num_heads=2, epsilon_start=0.8, epsilon_end=0.1, epsilon_decay_frames=50000):
         super(Gumbel_FF, self).__init__()
 
         self.num_actions = num_actions
         self.num_heads = num_heads
+        self.epsilon = epsilon_start
+        self.epsilon_end = epsilon_end
+        self.epsilon_decay_rate = (self.epsilon - self.epsilon_end) / float(epsilon_decay_frames)
 
         h1=128; h2 =128; g1 = 40; g2 = 40
 
@@ -56,7 +59,7 @@ class Gumbel_FF(nn.Module):
 
         # SAC SPECIFIC
         self.TEMP_MAX = 20
-        self.TEMP_MIN = 0.2
+        self.TEMP_MIN = 0.7
 
 
 
@@ -140,7 +143,7 @@ class Gumbel_FF(nn.Module):
         #         if self.epsilon > self.epsilon_end:
         #             self.epsilon -= self.epsilon_decay_rate
 
-        out -= 1 #Translate 0,1,2 to -1,0,1
+        #out -= 1 #Translate 0,1,2 to -1,0,1
 
         return out
 
@@ -156,7 +159,19 @@ class Gumbel_FF(nn.Module):
             if not return_only_action: log_prob.append(dist.log_prob(raw_action).t()[:,0:1])
 
         action = torch.cat(action, 1).float()
-        action -= 1 #Translate 0,1,2 to -1,0,1
+
+        if len(action) == 1 and random.random() < self.epsilon:
+            for _ in range(4):
+                action_ind = random.randint(0, int(self.num_actions/self.num_heads))
+                action[0,action_ind] = 0.0 if random.random() < 0.5 else 1.0
+
+            if self.epsilon > self.epsilon_end:
+                self.epsilon -= self.epsilon_decay_rate
+
+
+
+
+        #action -= 1 #Translate 0,1,2 to -1,0,1
         if return_only_action: return action
 
         log_prob = torch.cat(log_prob, 1).mean(1).unsqueeze(1)
@@ -315,8 +330,18 @@ class Gaussian_FF(nn.Module):
         x_t = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
         action = torch.tanh(x_t)
 
+
+        if check_nan_inf(action.cpu().detach()):
+            print('X_T', x_t)
+            print('ACtion', action)
+            print('MEAN', mean)
+            print('log_std', log_std)
+            print('std', std)
+            input()
+
         if return_only_action:
             return action
+
 
         log_prob = self.compute_log_prob(x_t, action, normal)
 
@@ -452,7 +477,9 @@ class Tri_Head_Q(nn.Module):
         return q1, q2, None
 
 
-
+def check_nan_inf(array):
+    import numpy as np
+    return np.isnan(array).any() or np.isinf(array).any()
 
 # class QActor(nn.Module):
 #     """Actor model

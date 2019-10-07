@@ -25,7 +25,7 @@ class L2M:
 
 
     """
-    def __init__(self, visualize=False, integrator_accuracy=5e-5, frameskip=4, T=1000, action_clamp=True, difficulty=2):
+    def __init__(self, visualize=False, integrator_accuracy=5e-5, frameskip=4, T=1000, action_clamp=False, difficulty=2):
         """
         A base template for all environment wrappers.
         """

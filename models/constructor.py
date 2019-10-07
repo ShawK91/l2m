@@ -39,7 +39,7 @@ class ModelConstructor:
 
         elif type == 'Gumbel_FF':
             from models.feedforward import Gumbel_FF
-            model = Gumbel_FF(self.state_dim, self.action_dim, num_heads=3)
+            model = Gumbel_FF(self.state_dim, self.action_dim, num_heads=2)
             if seed:
                 model.load_state_dict(torch.load(self.actor_seed))
                 print('Gumbel_FF seeded from', self.actor_seed)
