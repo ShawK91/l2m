@@ -1,14 +1,13 @@
 import opensim as osim
 from osim.http.client import Client
-import numpy as np
 import torch
 from models.constructor import ModelConstructor
 from core import utils
 from envs_repo.l2m import L2MRemote, L2M
 
 FRAMESKIP = 4
-seed = 'models_backup/r1/seed_r1'
-
+seed = 'models_backup/r1/seed2_r1'
+#seed = 'Results/Auxiliary/bestR1__sac_seed2019_roll10_diff3'
 model_constructor = ModelConstructor(169, 22, actor_seed=seed, critic_seed=None)
 net = model_constructor.make_model('Gaussian_FF', seed=True)
 
@@ -57,7 +56,7 @@ def submit_server():
 
 def test_locally():
 
-    env = L2M(frameskip=FRAMESKIP, difficulty=3, action_clamp=False)
+    env = L2M(frameskip=FRAMESKIP, difficulty=0, action_clamp=False, visualize=False)
     state = torch.Tensor(env.reset())
 
     time = 0; total_reward = 0
@@ -85,8 +84,8 @@ def test_locally():
             break
 
 
-#test_locally()
-submit_server()
+test_locally()
+#submit_server()
 # client = Client(remote_base)
 # env = L2MRemote(client, aicrowd_token, frameskip=FRAMESKIP)
 # state = torch.Tensor(env.first_state)

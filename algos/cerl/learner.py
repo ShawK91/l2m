@@ -20,7 +20,7 @@ class Learner():
 	"""Abstract Class specifying an object
 	"""
 
-	def __init__(self, model_constructor, args, gamma):
+	def __init__(self, model_constructor, args, gamma, **kwargs):
 
 		if args.algo == 'td3':
 			from algos.td3.td3 import TD3
@@ -32,7 +32,7 @@ class Learner():
 
 		elif args.algo == 'sac':
 			from algos.sac.sac import SAC
-			self.algo = SAC(args, model_constructor, gamma)
+			self.algo = SAC(args, model_constructor, gamma, **kwargs)
 
 		else:
 			Exception('Unknown algo in learner.py')

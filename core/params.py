@@ -57,12 +57,13 @@ class Parameters:
             self.mut_distribution = 1  # 1-Gaussian, 2-Laplace, 3-Uniform
             self.lineage_depth = 10
             self.ccea_reduction = 'leniency'
-            self.num_anchors = 7
+            self.num_anchors = 6
             self.num_blends = 2
             self.scheme = vars(parser.parse_args())['scheme']
 
 
         self.alpha = 0.2
+        self.autotune = vars(parser.parse_args())['autotune']
         self.target_update_interval = 1
         self.alpha_lr = 1e-3
 
@@ -79,6 +80,7 @@ class Parameters:
         self.savetag += '_roll' + str(self.rollout_size)
         self.savetag += '_diff' + str(self.difficulty)
         self.savetag += '_actionClamp' if self.action_clamp else ''
+        self.savetag += '_entropyAuto' if self.autotune and self.algo == 'sac' else ''
 
 
 

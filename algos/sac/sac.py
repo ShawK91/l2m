@@ -6,14 +6,14 @@ from core.utils import soft_update, hard_update
 
 
 class SAC(object):
-    def __init__(self, args, model_constructor, gamma):
+    def __init__(self, args, model_constructor, gamma, **kwargs):
 
         self.gamma = gamma
         self.tau = args.tau
         self.alpha = args.alpha
 
         self.target_update_interval = args.target_update_interval
-        self.automatic_entropy_tuning = True
+        self.automatic_entropy_tuning = kwargs['autotune']
 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

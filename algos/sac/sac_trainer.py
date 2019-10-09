@@ -40,7 +40,9 @@ class SAC_Trainer:
 		self.manager = Manager()
 
 		#Algo
-		self.algo = SAC(args, model_constructor, args.gamma)
+		sac_keyargs = {}
+		sac_keyargs['autotune'] = args.autotune
+		self.algo = SAC(args, model_constructor, args.gamma, **sac_keyargs)
 
 		# #Save best policy
 		# self.best_policy = model_constructor.make_model('actor')
@@ -164,7 +166,7 @@ class SAC_Trainer:
 			if self.r1_reward > self.best_score:
 				self.best_score = self.r1_reward
 				torch.save(self.test_bucket[0].state_dict(), self.args.aux_folder + 'bestR1_' + self.args.savetag)
-				print("Best R1 Policy saved with score", '%.2f' %self.r1_reward)
+				print("Best R2 Policy saved with score", '%.2f' %self.r1_reward)
 
 		else:
 			test_mean, test_std = None, None
@@ -182,7 +184,7 @@ class SAC_Trainer:
 
 	def train(self, frame_limit):
 		# Define Tracker class to track scores
-		test_tracker = utils.Tracker(self.args.savefolder, ['shaped_' + self.args.savetag, 'r1_'+self.args.savetag], '.csv')  # Tracker class to log progress
+		test_tracker = utils.Tracker(self.args.savefolder, ['shaped_' + self.args.savetag, 'r2_'+self.args.savetag], '.csv')  # Tracker class to log progress
 		time_start = time.time()
 
 		for gen in range(1, 1000000000):  # Infinite generations
@@ -193,7 +195,7 @@ class SAC_Trainer:
 			print('Gen/Frames', gen,'/',self.total_frames, 'max_ever:','%.2f'%self.best_score, ' Avg:','%.2f'%test_tracker.all_tracker[0][1],
 		      ' Frames/sec:','%.2f'%(self.total_frames/(time.time()-time_start)),
 			   ' Test/RolloutScore', '%.2f'%self.test_trace[-1], '%.2f'% self.rollout_fits_trace[-1],
-				  'Ep_len', '%.2f'%self.ep_len, '#Footsteps', '%.2f'%self.num_footsteps, 'R1_Reward', '%.2f'%self.r1_reward,
+				  'Ep_len', '%.2f'%self.ep_len, '#Footsteps', '%.2f'%self.num_footsteps, 'R2_Reward', '%.2f'%self.r1_reward,
 				  'savetag', self.args.savetag)
 
 			if gen % 5 == 0:

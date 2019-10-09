@@ -25,7 +25,7 @@ class L2M:
 
 
     """
-    def __init__(self, visualize=False, integrator_accuracy=5e-5, frameskip=4, T=1000, action_clamp=False, difficulty=2):
+    def __init__(self, visualize=False, integrator_accuracy=5e-5, frameskip=4, T=2500, action_clamp=False, difficulty=2):
         """
         A base template for all environment wrappers.
         """
@@ -41,7 +41,7 @@ class L2M:
         self.test_size = 1
 
         #Trackers
-        self.r1_reward = 0
+        self.r2_reward = 0
         self.num_footsteps = 0
 
 
@@ -101,7 +101,7 @@ class L2M:
             self.r1_reward += rew
             if self.env.footstep['new']: self.num_footsteps+= 1
 
-            rew = rs.get_reward_footsteps(self.env)
+            rew = rs.get_reward_footsteps_r2(self.env)
             reward += rew
 
             if done: break

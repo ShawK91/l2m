@@ -44,12 +44,13 @@ parser.add_argument('--reward_scale', type=float, help='Reward Scaling Multiplie
 parser.add_argument('--learning_start', type=int, help='Frames to wait before learning starts',  default=5000)
 
 #ALGO SPECIFIC ARGS
-
-parser.add_argument('--popsize', type=int, help='#Policies in the population',  default=30)
+parser.add_argument('--popsize', type=int, help='#Policies in the population',  default=20)
 parser.add_argument('--rollsize', type=int, help='#Policies in rollout size',  default=10)
 parser.add_argument('--scheme', type=str, help='#Neuroevolution Scheme? standard Vs. multipoint',  default='standard')
 parser.add_argument('--gradperstep', type=float, help='#Gradient step per env step',  default=1.0)
-parser.add_argument('--portfolio', type=int, help='Portfolio ID',  default=10)
+parser.add_argument('--portfolio', type=int, help='Portfolio ID',  default=20)
+
+parser.add_argument('--autotune', type=utils.str2bool, help='Autotune SAC entropy?',  default=False)
 
 USE_CERL = vars(parser.parse_args())['cerl']
 ALGO = vars(parser.parse_args())['algo']

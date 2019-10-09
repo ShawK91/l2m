@@ -28,7 +28,8 @@ def initialize_portfolio(portfolio, args, genealogy, portfolio_id, model_constru
             portfolio (list): Portfolio of learners
     """
 
-
+	sac_specific = {}
+	sac_specific['autotune'] = args.autotune
 
 	if portfolio_id == 10:
 		# Learner 1
@@ -43,14 +44,20 @@ def initialize_portfolio(portfolio, args, genealogy, portfolio_id, model_constru
 		portfolio.append(
 			Learner(model_constructor, args, gamma=0.999))
 
-		# # Learner 4
-		# portfolio.append(
-		# 	Learner(model_constructor, args, gamma=0.9995))
-		#
-		# # Learner 5
-		# portfolio.append(
-		# 	Learner(model_constructor, args, gamma=1.0))
 
+	if portfolio_id == 20:
+		# Learner 1
+		portfolio.append(
+			Learner(model_constructor, args, 0.9, **sac_specific))
+
+		# Learner 2
+		portfolio.append(
+			Learner(model_constructor, args, 0.99, **sac_specific))
+
+
+		# Learner 3
+		portfolio.append(
+			Learner(model_constructor, args, 0.999, **sac_specific))
 
 
 
