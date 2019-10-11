@@ -79,4 +79,4 @@ def rollout_worker(id, type, task_pipe, result_pipe, data_bucket, model_bucket, 
 				break
 
 		# Send back id, fitness, total length and shaped fitness using the result pipe
-		result_pipe.send([identifier, fitness, total_frame, env.istep, env.r1_reward, env.num_footsteps])
+		result_pipe.send([identifier, fitness, total_frame, env.istep, env.original_reward, env.shaped_reward['num_footsteps']])

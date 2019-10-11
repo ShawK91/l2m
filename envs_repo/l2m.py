@@ -41,9 +41,19 @@ class L2M:
         self.test_size = 1
 
         #Trackers
-        self.r2_reward = 0
-        self.num_footsteps = 0
+        self.shaped_reward = {'num_footsteps':[],
+                              'crouch_bonus':[],
+                              'knee_bend':[],
+                              'vel_follower':[]}
+        self.original_reward = 0.0
 
+        #Reward Shaping components
+        self.ltoes = {'x':[], 'y':[], 'z':[]}; self.rtoes= {'x':[], 'y':[], 'z':[]}
+        self.ltibia = {'x':[], 'y':[], 'z':[]}; self.rtibia = {'x':[], 'y':[], 'z':[]}
+        self.pelvis = {'x':[], 'y':[], 'z':[]}
+
+        self.ltibia_angle = []; self.rtibia_angle = []
+        self.lfemur_angle = []; self.rfemur_angle = []
 
 
     def reset(self):
@@ -56,11 +66,23 @@ class L2M:
         """
 
         self.istep = 0
-        self.r1_reward = 0
-        self.num_footsteps = 0
+        self.shaped_reward = {'num_footsteps':[],
+                              'crouch_bonus':[],
+                              'knee_bend':[],
+                              'vel_follower':[]}
+        self.original_reward = 0.0
+
+        #Reward Shaping components
+        self.ltoes = {'x':[], 'y':[], 'z':[]}; self.rtoes= {'x':[], 'y':[], 'z':[]}
+        self.ltibia = {'x':[], 'y':[], 'z':[]}; self.rtibia = {'x':[], 'y':[], 'z':[]}
+        self.pelvis = {'x':[], 'y':[], 'z':[]}
+
+        self.ltibia_angle = []; self.rtibia_angle = []
+        self.lfemur_angle = []; self.rfemur_angle = []
 
 
         state_dict = self.env.reset()
+        self.update_vars()
         obs = flatten(state_dict)
         goal = state_dict['v_tgt_field']
         goal = goal[:, 0::2, 0::2].flatten()
@@ -72,7 +94,6 @@ class L2M:
             raise Exception ('Nan or Inf encountered')
 
         return state
-
 
 
     def step(self, action): #Expects a numpy action
@@ -98,12 +119,19 @@ class L2M:
 
             next_state_dict, rew, done, info = self.env.step(bounded_action)
 
-            self.r1_reward += rew
-            if self.env.footstep['new']: self.num_footsteps+= 1
+            if self.istep > self.T: done = True
 
-            rew = rs.get_reward_footsteps_r2(self.env)
-            reward += rew
 
+
+            self.update_vars()
+            self.update_shaped_reward()
+
+            #Fall Down Penalty
+            if self.pelvis['y'][-1] < 0.6: rew -= 5.0
+
+            self.original_reward += rew
+            reward += rew + self.shaped_reward['crouch_bonus'][-1] + self.shaped_reward['knee_bend'][-1] - self.shaped_reward['vel_follower'][-1] + 1.0
+            reward/=float(self.frameskip)
             if done: break
 
 
@@ -118,6 +146,49 @@ class L2M:
 
     def render(self):
         self.env.render()
+
+
+    def update_vars(self):
+        state = self.env.get_state_desc()
+        #TIBIA
+        self.ltibia['x'].append(state["body_pos"]["tibia_l"][0])
+        self.ltibia['y'].append(state["body_pos"]["tibia_l"][1])
+        self.ltibia['z'].append(state["body_pos"]["tibia_l"][2])
+
+        self.rtibia['x'].append(state["body_pos"]["tibia_r"][0])
+        self.rtibia['y'].append(state["body_pos"]["tibia_r"][1])
+        self.rtibia['z'].append(state["body_pos"]["tibia_r"][2])
+
+        #TOES
+        self.ltoes['x'].append(state["body_pos"]["toes_l"][0])
+        self.ltoes['y'].append(state["body_pos"]["toes_l"][1])
+        self.ltoes['z'].append(state["body_pos"]["toes_l"][2])
+
+        self.rtoes['x'].append(state["body_pos"]["toes_r"][0])
+        self.rtoes['y'].append(state["body_pos"]["toes_r"][1])
+        self.rtoes['z'].append(state["body_pos"]["toes_r"][2])
+
+        #PELVIS
+        self.pelvis['x'].append(state["body_pos"]["pelvis"][0])
+        self.pelvis['y'].append(state["body_pos"]["pelvis"][1])
+        self.pelvis['z'].append(state["body_pos"]["pelvis"][2])
+
+        #ANGLES
+        self.ltibia_angle.append(state["body_pos_rot"]["tibia_l"][2])
+        self.rtibia_angle.append(state["body_pos_rot"]["tibia_r"][2])
+        self.lfemur_angle.append(state["body_pos_rot"]["femur_l"][2])
+        self.rfemur_angle.append(state["body_pos_rot"]["femur_r"][2])
+
+    def update_shaped_reward(self):
+
+        if self.env.footstep['new']: self.shaped_reward['num_footsteps'].append(1)
+
+        self.shaped_reward['crouch_bonus'].append(rs.crouch(self.pelvis['y'][-1]))
+
+
+        self.shaped_reward['knee_bend'].append(rs.knee_bend(self.ltibia_angle[-1], self.lfemur_angle[-1], self.rtibia_angle[-1], self.lfemur_angle[-1]))
+
+        self.shaped_reward['vel_follower'].append(rs.vel_follower(self.env))
 
 
 class L2MRemote:
@@ -186,8 +257,6 @@ class L2MRemote:
 
 
         return next_state, reward, done, info
-
-
 
 
 def process_dict(dict):

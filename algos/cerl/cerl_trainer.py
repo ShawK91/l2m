@@ -155,10 +155,10 @@ class CERL_Trainer:
 				self.task_pipes[rollout_id][0].send(learner_id)
 				self.roll_flag[rollout_id] = False
 
-		# #Start Test rollouts
-		# if gen % 1 == 0:
-		# 	self.test_flag = True
-		# 	for pipe in self.test_task_pipes: pipe[0].send(0)
+		#Start Test rollouts
+		if gen % 1 == 0:
+			self.test_flag = True
+			for pipe in self.test_task_pipes: pipe[0].send(0)
 
 
 		############# UPDATE PARAMS USING GRADIENT DESCENT ##########

@@ -105,6 +105,11 @@ def weights_init_(m, lin_gain=1.0, bias_gain=0.1):
         torch.nn.init.xavier_uniform_(m.weight, gain=lin_gain)
         torch.nn.init.constant_(m.bias, bias_gain)
 
+
+def check_nan_inf(array):
+    import numpy as np
+    return np.isnan(array).any() or np.isinf(array).any()
+
 def str2bool(v):
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
         return True

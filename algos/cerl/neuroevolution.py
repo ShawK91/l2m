@@ -279,6 +279,11 @@ class SSNE:
                         continue_flag = False
                         break
 
+        print()
+        print('Anchors:', anchor_inds)
+        print('Fitness_Rank', lineage_rank[0:len(anchor_inds)])
+        print()
+
         return anchor_inds
 
     def roulette_wheel(self, probs, num_samples):

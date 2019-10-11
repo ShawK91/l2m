@@ -200,7 +200,7 @@ class Deterministic_FF(nn.Module):
         self.stochastic = False
         self.num_actions = num_actions
 
-        h1=128; h2 =128
+        h1=256; h2 =200
 
         #Shared FF
         self.linear1 = nn.Linear(num_inputs, h1)
@@ -212,7 +212,7 @@ class Deterministic_FF(nn.Module):
 
         self.noise = Normal(0, 0.01)
 
-        weights_init_(self, lin_gain=1.0, bias_gain=0.1)
+        #weights_init_(self, lin_gain=1.0, bias_gain=0.1)
 
 
 
@@ -260,7 +260,7 @@ class Gaussian_FF(nn.Module):
 
         self.stochastic = True
         self.num_actions = num_actions
-        h1=128; h2 =128; g1 = 40; g2 = 40
+        h1=256; h2 =200; g1 = 80; g2 = 40
 
 
         #Goal+Feature Processor
@@ -331,13 +331,13 @@ class Gaussian_FF(nn.Module):
         action = torch.tanh(x_t)
 
 
-        if check_nan_inf(action.cpu().detach()):
-            print('X_T', x_t)
-            print('ACtion', action)
-            print('MEAN', mean)
-            print('log_std', log_std)
-            print('std', std)
-            input()
+        # if check_nan_inf(action.cpu().detach()):
+        #     print('X_T', x_t)
+        #     print('ACtion', action)
+        #     print('MEAN', mean)
+        #     print('log_std', log_std)
+        #     print('std', std)
+        #     input()
 
         if return_only_action:
             return action
@@ -379,7 +379,7 @@ class Tri_Head_Q(nn.Module):
 
     def __init__(self, state_dim, action_dim):
         super(Tri_Head_Q, self).__init__()
-        l1 = 128; l2 = 128; g1 = 40; g2 = 40
+        l1 = 256; l2 = 256; g1 = 80; g2 = 40
 
 
         #Goal+Feature Processor
