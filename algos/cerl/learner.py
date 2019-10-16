@@ -20,17 +20,17 @@ class Learner():
 	"""Abstract Class specifying an object
 	"""
 
-	def __init__(self, model_constructor, args, gamma, **kwargs):
+	def __init__(self, model_constructor, args, algo, gamma, **kwargs):
 
-		if args.algo == 'td3':
+		if algo == 'td3':
 			from algos.td3.td3 import TD3
 			self.algo = TD3(model_constructor, actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=gamma, tau=args.tau, polciy_noise=0.1, policy_noise_clip=0.2, policy_ups_freq=2)
 
-		elif args.algo == 'ddqn':
+		elif algo == 'ddqn':
 			from algos.ddqn.ddqn import DDQN
 			self.algo = DDQN(args, model_constructor, gamma)
 
-		elif args.algo == 'sac':
+		elif algo == 'sac':
 			from algos.sac.sac import SAC
 			self.algo = SAC(args, model_constructor, gamma, **kwargs)
 

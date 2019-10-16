@@ -277,6 +277,10 @@ class CERL_Trainer:
 	def train(self, frame_limit):
 		# Define Tracker class to track scores
 		test_tracker = utils.Tracker(self.args.savefolder, ['score_' + self.args.savetag, 'r2_'+self.args.savetag], '.csv')  # Tracker class to log progress
+
+
+		grad_temp = [str(i)+'entropy_' + self.args.savetag for i in range(len(self.portfolio))] + [str(i)+'policyQ_'+self.args.savetag for i in range(len(self.portfolio))]
+		grad_tracker = utils.Tracker(self.args.aux_folder, grad_temp, '.csv')  # Tracker class to log progress
 		time_start = time.time()
 
 		for gen in range(1, 1000000000):  # Infinite generations
@@ -289,6 +293,11 @@ class CERL_Trainer:
 			  ' Champ_len', '%.2f'%champ_len, ' Test_score u/std', utils.pprint(test_mean), utils.pprint(test_std),
 			  'Ep_len', '%.2f'%self.ep_len, '#Footsteps', '%.2f'%self.num_footsteps, 'R2_Reward', '%.2f'%self.r1_reward,
 			  'savetag', self.args.savetag)
+
+
+			grad_temp = [algo.algo.entropy['mean'] for algo in self.portfolio] + [algo.algo.policy_q['mean'] for algo in self.portfolio]
+			grad_tracker.update(grad_temp, self.total_frames)
+
 
 			if gen % 5 == 0:
 				print('Learner Fitness', [utils.pprint(learner.value) for learner in self.portfolio],
