@@ -43,7 +43,8 @@ class TD3_Trainer:
 		self.algo = TD3(model_constructor,  actor_lr=args.actor_lr, critic_lr=args.critic_lr, gamma=args.gamma, tau=args.tau, polciy_noise=0.1, policy_noise_clip=0.2, policy_ups_freq=2)
 
 		#Save best policy
-		self.best_policy = model_constructor.make_model('Deterministic_FF')
+		self.best_policy = model_constructor.make_model('Gaussian_FF')
+		self.best_policy.stochastic = False
 
 		#Init BUFFER
 		self.replay_buffer = Buffer(args.buffer_size)
@@ -51,7 +52,10 @@ class TD3_Trainer:
 
 		#Initialize Rollout Bucket
 		self.rollout_bucket = self.manager.list()
-		self.rollout_bucket.append(model_constructor.make_model('Deterministic_FF'))
+		self.rollout_bucket.append(model_constructor.make_model('Gaussian_FF'))
+		for actor in self.rollout_bucket:
+			actor.stochastic = False
+			actor.eval()
 
 		############## MULTIPROCESSING TOOLS ###################
 		#Learner rollout workers
@@ -63,7 +67,10 @@ class TD3_Trainer:
 
 		#Test bucket
 		self.test_bucket = self.manager.list()
-		self.test_bucket.append(model_constructor.make_model('Deterministic_FF'))
+		self.test_bucket.append(model_constructor.make_model('Gaussian_FF'))
+		for actor in self.test_bucket:
+			actor.stochastic=False
+			actor.eval()
 
 		#5 Test workers
 		self.test_task_pipes = [Pipe() for _ in range(env_constructor.dummy_env.test_size)]
@@ -123,7 +130,7 @@ class TD3_Trainer:
 			self.gen_frames = 0
 
 
-		########## HARD -JOIN ROLLOUTS FOR LEARNER ROLLOUTS ############
+		######### HARD -JOIN ROLLOUTS FOR LEARNER ROLLOUTS ############
 		if self.args.rollout_size > 0:
 			for i in range(self.args.rollout_size):
 				entry = self.result_pipes[i][1].recv()
@@ -136,7 +143,8 @@ class TD3_Trainer:
 
 			#Referesh buffer (housekeeping tasks - pruning to keep under capacity)
 			self.replay_buffer.referesh()
-		######################### END OF PARALLEL ROLLOUTS ################
+		######################## END OF PARALLEL ROLLOUTS ################
+
 
 		###### TEST SCORE ######
 		if self.test_flag:

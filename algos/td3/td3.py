@@ -34,9 +34,11 @@ class TD3(object):
         self.gamma = gamma; self.tau = tau; self.policy_noise = polciy_noise; self.policy_noise_clip = policy_noise_clip; self.policy_ups_freq = policy_ups_freq
 
         #Initialize actors
-        self.actor = model_constructor.make_model('Deterministic_FF')
+        self.actor = model_constructor.make_model('Gaussian_FF')
+        self.actor.stochastic = False
         #if init_w: self.actor.apply(utils.init_weights)
-        self.actor_target = model_constructor.make_model('Deterministic_FF')
+        self.actor_target = model_constructor.make_model('Gaussian_FF')
+        self.actor_target.stochastic = False
         utils.hard_update(self.actor_target, self.actor)
         self.actor_optim = Adam(self.actor.parameters(), actor_lr, weight_decay=0.01)
 

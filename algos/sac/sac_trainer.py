@@ -21,6 +21,7 @@ from torch.multiprocessing import Process, Pipe, Manager
 import torch
 from core.buffer import Buffer
 from algos.sac.sac import SAC
+from torch.utils.tensorboard import SummaryWriter
 
 
 
@@ -42,6 +43,7 @@ class SAC_Trainer:
 		#Algo
 		sac_keyargs = {}
 		sac_keyargs['autotune'] = args.autotune
+		sac_keyargs['entropy'] = True
 		self.algo = SAC(args, model_constructor, args.gamma, **sac_keyargs)
 
 		# #Save best policy
@@ -185,6 +187,9 @@ class SAC_Trainer:
 	def train(self, frame_limit):
 		# Define Tracker class to track scores
 		test_tracker = utils.Tracker(self.args.savefolder, ['shaped_' + self.args.savetag, 'r2_'+self.args.savetag], '.csv')  # Tracker class to log progress
+		grad_tracker = utils.Tracker(self.args.aux_folder, ['entropy_'+self.args.savetag, 'policyQ_'+self.args.savetag], '.csv')  # Tracker class to log progress
+		writer = SummaryWriter(self.args.savefolder)
+
 		time_start = time.time()
 
 		for gen in range(1, 1000000000):  # Infinite generations
@@ -197,6 +202,8 @@ class SAC_Trainer:
 			   ' Test/RolloutScore', '%.2f'%self.test_trace[-1], '%.2f'% self.rollout_fits_trace[-1],
 				  'Ep_len', '%.2f'%self.ep_len, '#Footsteps', '%.2f'%self.num_footsteps, 'R2_Reward', '%.2f'%self.r1_reward,
 				  'savetag', self.args.savetag)
+
+			grad_tracker.update([self.algo.entropy['mean'], self.algo.policy_q['mean']], self.total_frames)
 
 			if gen % 5 == 0:
 				print()

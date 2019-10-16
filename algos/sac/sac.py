@@ -11,6 +11,7 @@ class SAC(object):
         self.gamma = gamma
         self.tau = args.tau
         self.alpha = args.alpha
+        self.sac_kwargs = kwargs
 
         self.target_update_interval = args.target_update_interval
         self.automatic_entropy_tuning = kwargs['autotune']
@@ -18,7 +19,7 @@ class SAC(object):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.critic = model_constructor.make_model('Tri_Head_Q').to(device=self.device)
-        self.critic_optim = Adam(self.critic.parameters(), lr=args.critic_lr)
+        self.critic_optim = Adam(self.critic.parameters(), lr=args.critic_lr, weight_decay=1e-4)
 
         self.critic_target = model_constructor.make_model('Tri_Head_Q').to(device=self.device)
         hard_update(self.critic_target, self.critic)
@@ -28,12 +29,12 @@ class SAC(object):
         if self.automatic_entropy_tuning == True:
             self.target_entropy = -torch.prod(torch.Tensor(1, model_constructor.action_dim)).item()
             self.log_alpha = torch.zeros(1, requires_grad=True)
-            self.alpha_optim = Adam([self.log_alpha], lr=args.alpha_lr)
+            self.alpha_optim = Adam([self.log_alpha], lr=args.alpha_lr, weight_decay=1e-4)
             self.log_alpha = self.log_alpha.to(device=self.device)
 
 
         self.actor = model_constructor.make_model('Gaussian_FF').to(device=self.device)
-        self.actor_optim = Adam(self.actor.parameters(), lr=args.actor_lr)
+        self.actor_optim = Adam(self.actor.parameters(), lr=args.actor_lr, weight_decay=1e-4)
 
         # self.actor_target = model_constructor.make_model('actor')
         # hard_update(self.actor_target, self.actor)
@@ -75,7 +76,9 @@ class SAC(object):
         with torch.no_grad():
             next_state_action, next_state_log_pi,_,_,_= self.actor.noisy_action(next_state_batch,  return_only_action=False)
             qf1_next_target, qf2_next_target,_ = self.critic_target.forward(next_state_batch, next_state_action)
-            min_qf_next_target = torch.min(qf1_next_target, qf2_next_target) - self.alpha * next_state_log_pi
+            min_qf_next_target = torch.min(qf1_next_target, qf2_next_target)
+            if self.sac_kwargs['entropy']:
+                min_qf_next_target -= self.alpha * next_state_log_pi
             next_q_value = reward_batch + (1-done_batch) * self.gamma * (min_qf_next_target)
             self.compute_stats(next_state_log_pi, self.next_entropy)
 
@@ -91,7 +94,11 @@ class SAC(object):
         min_qf_pi = torch.min(qf1_pi, qf2_pi)
         self.compute_stats(min_qf_pi, self.policy_q)
 
-        policy_loss = ((self.alpha * log_pi) - min_qf_pi).mean()  # Jπ = 𝔼st∼D,εt∼N[α * logπ(f(εt;st)|st) − Q(st,f(εt;st))]
+        policy_loss = -min_qf_pi # Jπ = 𝔼st∼D,εt∼N[α * logπ(f(εt;st)|st) − Q(st,f(εt;st))]
+        if self.sac_kwargs['entropy']:
+            policy_loss += self.alpha * log_pi
+        policy_loss = policy_loss.mean()
+
 
         self.critic_optim.zero_grad()
         qf1_loss.backward(retain_graph=True)
