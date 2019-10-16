@@ -19,18 +19,18 @@ from envs_repo.constructor import EnvConstructor
 from models.constructor import ModelConstructor
 from core.params import Parameters
 import argparse, torch
+
 parser = argparse.ArgumentParser()
 
 
 #######################  COMMANDLINE - ARGUMENTS ######################
-parser.add_argument('--seed', type=int, help='Seed', default=2019)
+parser.add_argument('--seed', type=int, help='Seed', default=59)
 parser.add_argument('--savetag', type=str, help='#Tag to append to savefile',  default='')
 parser.add_argument('--gpu_id', type=int, help='#GPU ID ',  default=0)
 parser.add_argument('--total_steps', type=float, help='#Total steps in the env in millions ', default=40)
 parser.add_argument('--buffer', type=float, help='Buffer size in million',  default=1.0)
 parser.add_argument('--env', type=str, help='Env Name',  default='l2m')
 parser.add_argument('--config', type=str, help='Config Name',  default='')
-parser.add_argument('--difficulty', type=int, help='Difficulty Level',  default=3)
 parser.add_argument('--action_clamp', type=utils.str2bool, help='Clamp action?',  default=False)
 parser.add_argument('--algo', type=str, help='Which algo? - CERL_SAC, CERL_TD3, TD3, SAC ',  default='sac')
 parser.add_argument('--cerl', type=utils.str2bool, help='#Use CERL?',  default=False)
@@ -44,14 +44,16 @@ parser.add_argument('--reward_scale', type=float, help='Reward Scaling Multiplie
 parser.add_argument('--learning_start', type=int, help='Frames to wait before learning starts',  default=5000)
 
 #ALGO SPECIFIC ARGS
-parser.add_argument('--popsize', type=int, help='#Policies in the population',  default=10)
-parser.add_argument('--rollsize', type=int, help='#Policies in rollout size',  default=10)
+parser.add_argument('--popsize', type=int, help='#Policies in the population',  default=20)
+parser.add_argument('--rollsize', type=int, help='#Policies in rollout size',  default=20)
 parser.add_argument('--scheme', type=str, help='#Neuroevolution Scheme? standard Vs. multipoint',  default='standard')
-parser.add_argument('--gradperstep', type=float, help='#Gradient step per env step',  default=1.0)
-parser.add_argument('--portfolio', type=int, help='Portfolio ID',  default=20)
+parser.add_argument('--gradperstep', type=float, help='#Gradient step per env step',  default=0.5)
+parser.add_argument('--portfolio', type=int, help='Portfolio ID',  default=-1)
 
 parser.add_argument('--autotune', type=utils.str2bool, help='Autotune SAC entropy?',  default=True)
-parser.add_argument('--T', type=int, help='Time Length?',  default=2500)
+parser.add_argument('--T', type=int, help='Time Length?',  default=300)
+parser.add_argument('--difficulty', type=int, help='Difficulty Level',  default=3)
+parser.add_argument('--alpha', type=float, help='SAC Alpha',  default=0.3)
 
 USE_CERL = vars(parser.parse_args())['cerl']
 ALGO = vars(parser.parse_args())['algo']
@@ -69,6 +71,7 @@ env_constructor = EnvConstructor(args.env_name, args.config, **args.env_args)
 
 #######################  Actor, Critic and ValueFunction Model Constructor ######################
 model_constructor = ModelConstructor(env_constructor.dummy_env.state_dim, env_constructor.dummy_env.action_dim, args.actor_seed, args.critic_seed)
+
 
 
 if USE_CERL:

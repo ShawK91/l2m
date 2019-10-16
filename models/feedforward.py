@@ -17,7 +17,8 @@
 import torch
 import torch.nn as nn
 from torch.distributions import Normal, Cauchy, RelaxedOneHotCategorical
-from core.utils import weights_init_, random
+from core.utils import random
+import numpy as np
 
 class Gumbel_FF(nn.Module):
     """Actor model
@@ -187,64 +188,77 @@ class Gumbel_FF(nn.Module):
         return minimum, maximum, mean
 
 
-class Deterministic_FF(nn.Module):
-    """Actor model
-        Parameters:
-              args (object): Parameter class
-    """
-
-    def __init__(self, num_inputs, num_actions):
-        super(Deterministic_FF, self).__init__()
-
-
-        self.stochastic = False
-        self.num_actions = num_actions
-
-        h1=256; h2 =200
-
-        #Shared FF
-        self.linear1 = nn.Linear(num_inputs, h1)
-        self.linear2 = nn.Linear(h1, h2)
-        self.mean_linear = nn.Linear(h2, num_actions)
-
-        #Knet
-        #self.knet = KNet(num_inputs+g1, h1, 5, h2)
-
-        self.noise = Normal(0, 0.01)
-
-        #weights_init_(self, lin_gain=1.0, bias_gain=0.1)
-
-
-
-    def clean_action(self, state):
-        """Method to forward propagate through the actor's graph
-            Parameters:
-                  input (tensor): states
-            Returns:
-                  action (tensor): actions
-        """
-        #x = self.knet(state)
-        x = torch.selu(self.linear1(state))
-        x = torch.selu(self.linear2(x))
-        mean = self.mean_linear(x)
-
-        return torch.tanh(mean)
-
-
-    def noisy_action(self, state):
-        mean = self.clean_action(state)
-        action = mean + torch.clamp(self.noise.sample((len(state), self.num_actions)), min=-0.5, max=0.5)
-
-        return action
-
-
-    def get_norm_stats(self):
-        minimum = min([torch.min(param).item() for param in self.parameters()])
-        maximum = max([torch.max(param).item() for param in self.parameters()])
-        means = [torch.mean(torch.abs(param)).item() for param in self.parameters()]
-        mean = sum(means)/len(means)
-
-        return minimum, maximum, mean
+# class Deterministic_FF(nn.Module):
+#     """Actor model
+#         Parameters:
+#               args (object): Parameter class
+#     """
+#
+#     def __init__(self, num_inputs, num_actions):
+#         super(Deterministic_FF, self).__init__()
+#
+#         self.stochastic = True
+#         self.num_actions = num_actions
+#         h1=128; h2 =64; g1 = 40; g2 = 40
+#
+#
+#         #Goal+Feature Processor
+#         self.feature1 = nn.Linear(97, h1)
+#         self.goal1 = nn.Linear(72, g1)
+#         self.goal2 = nn.Linear(g1, g2)
+#
+#
+#         #Shared FF
+#         self.linear1 = nn.Linear(h1+g2, h1)
+#         self.linear2 = nn.Linear(h1, h2)
+#         self.mean_linear = nn.Linear(h2, num_actions)
+#
+#
+#     def clean_action(self, state, return_only_action=True):
+#         """Method to forward propagate through the actor's graph
+#             Parameters:
+#                   input (tensor): states
+#             Returns:
+#                   action (tensor): actions
+#         """
+#         #x = self.knet(state)
+#
+#
+#         #Goal+Feature Processor
+#         obs = self.feature1(state[:,0:97])
+#         obs = torch.selu(obs)
+#
+#         dict = self.goal1(state[:,97:])
+#         dict = torch.selu(dict)
+#         dict = self.goal2(dict)
+#         dict = torch.selu(dict)
+#
+#         x = torch.cat([obs, dict], axis=1)
+#
+#
+#         #Shared
+#         x = torch.selu(self.linear1(x));        print(x.shape)
+#         x = torch.selu(self.linear2(x));        print(x.shape)
+#         mean = self.mean_linear(x)
+#         print(mean.shape)
+#
+#         return torch.tanh(mean)
+#
+#
+#     def noisy_action(self, state):
+#         mean = self.clean_action(state)
+#         action = mean + torch.clamp(self.noise.sample((len(state), self.num_actions)), min=-0.5, max=0.5)
+#
+#         return action
+#
+#
+#     def get_norm_stats(self):
+#         minimum = min([torch.min(param).item() for param in self.parameters()])
+#         maximum = max([torch.max(param).item() for param in self.parameters()])
+#         means = [torch.mean(torch.abs(param)).item() for param in self.parameters()]
+#         mean = sum(means)/len(means)
+#
+#         return minimum, maximum, mean
 
 
 
@@ -255,10 +269,10 @@ class Gaussian_FF(nn.Module):
               args (object): Parameter class
     """
 
-    def __init__(self, num_inputs, num_actions):
+    def __init__(self, num_inputs, num_actions, is_stochastic=True):
         super(Gaussian_FF, self).__init__()
 
-        self.stochastic = True
+        self.stochastic = is_stochastic
         self.num_actions = num_actions
         h1=256; h2 =200; g1 = 80; g2 = 40
 
@@ -325,26 +339,26 @@ class Gaussian_FF(nn.Module):
 
     def noisy_action(self, state,return_only_action=True):
         mean, log_std = self.clean_action(state, return_only_action=False)
-        std = log_std.exp()
-        normal = Normal(mean, std)
-        x_t = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
-        action = torch.tanh(x_t)
 
+        if self.stochastic:
+            std = log_std.exp()
+            normal = Normal(mean, std)
+            x_t = normal.rsample()  # for reparameterization trick (mean + std * N(0,1))
+            action = torch.tanh(x_t)
 
-        # if check_nan_inf(action.cpu().detach()):
-        #     print('X_T', x_t)
-        #     print('ACtion', action)
-        #     print('MEAN', mean)
-        #     print('log_std', log_std)
-        #     print('std', std)
-        #     input()
+        else:
+            noise = np.random.normal(0, 0.2, (len(state), self.num_actions))
+            action = mean + torch.clamp(torch.Tensor(noise), min=-0.5, max=0.5)
 
         if return_only_action:
             return action
 
-
-        log_prob = self.compute_log_prob(x_t, action, normal)
-
+        if self.stochastic:
+            log_prob = self.compute_log_prob(x_t, action, normal)
+        else:
+            log_prob = None
+            normal = None
+            x_t = None
         return action, log_prob, x_t, normal, torch.tanh(mean)
 
 
@@ -416,6 +430,20 @@ class Tri_Head_Q(nn.Module):
         #self.half()
         #weights_init_(self, lin_gain=1.0, bias_gain=0.1)
 
+        self.USE_V = False
+        if self.USE_V:
+            ######################## Value Head ##################
+            # Construct Hidden Layer 1 with state
+            self.v1 = nn.Linear(l1 + g2, l1)
+            #self.q2ln1 = nn.LayerNorm(l1)
+
+            #Hidden Layer 2
+            self.v2 = nn.Linear(l1, l2)
+            #self.q2ln2 = nn.LayerNorm(l2)
+
+            #Out
+            self.vout = nn.Linear(l2, 1)
+
 
 
 
@@ -465,12 +493,17 @@ class Tri_Head_Q(nn.Module):
         #q2 = self.q2ln2(q2)
         q2 = self.q2out(q2)
 
-        # ###### Value HEAD ####
-        # v = torch.tanh(self.vf1(obs))
-        # v = self.vln1(v)
-        # v = torch.tanh(self.vf2(v))
-        # v = self.vln2(v)
-        # v = self.vout(v)
+
+        if self.USE_V:
+            ###### Value HEAD ####
+            v = torch.selu(self.v1(torch.cat([obs, dict], 1)))
+            #v = self.vln1(v)
+            v = torch.tanh(self.v2(v))
+            #v = self.vln2(v)
+            v = self.vout(v)
+
+            q1 -= v
+            q2 -= v
 
         #self.half()
 

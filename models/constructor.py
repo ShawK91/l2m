@@ -14,7 +14,7 @@ class ModelConstructor:
         """
         self.state_dim = state_dim
         self.action_dim = action_dim
-        self.actor_seed = actor_seed
+        self.actor_seed = 'model_backup/r2/r2_init'
         self.critic_seed = critic_seed
 
 
