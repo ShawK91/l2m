@@ -30,35 +30,44 @@ def initialize_portfolio(portfolio, args, genealogy, portfolio_id, model_constru
 
 	sac_specific = {}
 	sac_specific['autotune'] = args.autotune
+	sac_specific['entropy'] = True
 
 	if portfolio_id == 10:
 		# Learner 1
 		portfolio.append(
-			Learner(model_constructor, args, gamma=0.9))
+			Learner(model_constructor, args, args.algo, gamma=0.92, **sac_specific))
 
 		# Learner 2
 		portfolio.append(
-			Learner(model_constructor, args, gamma=0.99))
+			Learner(model_constructor, args, args.algo, gamma=0.97, **sac_specific))
 
 		# Learner 3
 		portfolio.append(
-			Learner(model_constructor, args, gamma=0.999))
+			Learner(model_constructor, args, args.algo, gamma=0.994, **sac_specific))
+
+
 
 
 	if portfolio_id == 20:
 		# Learner 1
 		portfolio.append(
-			Learner(model_constructor, args, 0.9, **sac_specific))
+			Learner(model_constructor, args, 'sac', 0.92, **sac_specific))
 
 		# Learner 2
 		portfolio.append(
-			Learner(model_constructor, args, 0.99, **sac_specific))
+			Learner(model_constructor, args, 'sac', 0.97, **sac_specific))
 
-
+		sac_specific['entropy'] = False
+		sac_specific['autotune'] = False
 		# Learner 3
 		portfolio.append(
-			Learner(model_constructor, args, 0.999, **sac_specific))
+			Learner(model_constructor, args, 'sac', 0.97, **sac_specific))
+		portfolio[-1].algo.actor.stochastic = False
 
+		# Learner 4
+		portfolio.append(
+			Learner(model_constructor, args, 'sac', 0.994, **sac_specific))
+		portfolio[-1].algo.actor.stochastic = False
 
 
 	return portfolio
