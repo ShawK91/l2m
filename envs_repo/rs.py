@@ -38,7 +38,7 @@ def vel_follower(self): # for L2M2019 Round 2
     v_body = [state_desc['body_vel']['pelvis'][0], -state_desc['body_vel']['pelvis'][2]]
     v_tgt = self.vtgt.get_vtgt(p_body).T
 
-    r = np.linalg.norm(v_body - v_tgt)
+    r = -np.linalg.norm(v_body - v_tgt)
     return r
 
 ################# ROUND 2 BRS #######################
