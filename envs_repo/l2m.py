@@ -46,6 +46,7 @@ class L2M:
                               'knee_bend':[],
                               'vel_follower':[]}
         self.original_reward = 0.0
+        self.fell_down = False
 
         #Reward Shaping components
         self.ltoes = {'x':[], 'y':[], 'z':[]}; self.rtoes= {'x':[], 'y':[], 'z':[]}
@@ -71,6 +72,7 @@ class L2M:
                               'knee_bend':[],
                               'vel_follower':[]}
         self.original_reward = 0.0
+        self.fell_down = False
 
         #Reward Shaping components
         self.ltoes = {'x':[], 'y':[], 'z':[]}; self.rtoes= {'x':[], 'y':[], 'z':[]}
@@ -126,12 +128,11 @@ class L2M:
             self.update_vars()
             self.update_shaped_reward()
 
-            #Fall Down Penalty
-            if self.pelvis['y'][-1] < 0.6: rew -= 5.0
+            #Fall Down?
+            if self.pelvis['y'][-1] < 0.6: self.fell_down = True
 
             self.original_reward += rew
-            reward += rew + self.shaped_reward['crouch_bonus'][-1] + self.shaped_reward['knee_bend'][-1] - self.shaped_reward['vel_follower'][-1] + 1.0
-            reward/=float(self.frameskip)
+            reward += rew #+ self.shaped_reward['crouch_bonus'][-1] + self.shaped_reward['knee_bend'][-1] + self.shaped_reward['vel_follower'][-1] + 1.0 + self.fell_down * (-5.0)
             if done: break
 
 

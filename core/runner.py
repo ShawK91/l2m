@@ -42,8 +42,10 @@ def rollout_worker(id, type, task_pipe, result_pipe, data_bucket, model_bucket, 
 		identifier = task_pipe.recv()  # Wait until a signal is received  to start rollout
 		if identifier == 'TERMINATE': exit(0) #Kill yourself
 
+
 		# Get the requisite network
 		net = model_bucket[identifier]
+
 
 		fitness = 0.0
 		total_frame = 0
@@ -52,8 +54,10 @@ def rollout_worker(id, type, task_pipe, result_pipe, data_bucket, model_bucket, 
 		state = utils.to_tensor(state)
 		while True:  # unless done
 
-			if type == 'pg': action = net.noisy_action(state)
-			else: action = net.clean_action(state)
+			if type == 'pg':
+				action = net.noisy_action(state)
+			else:
+				action = net.clean_action(state)
 
 
 			action = utils.to_numpy(action)
@@ -67,9 +71,10 @@ def rollout_worker(id, type, task_pipe, result_pipe, data_bucket, model_bucket, 
 			if data_bucket != None: #Skip for test set
 				rollout_trajectory.append([utils.to_numpy(state), utils.to_numpy(next_state),
 				                        np.float32(action), np.reshape(np.float32(np.array([reward])), (1, 1)),
-				                           np.reshape(np.float32(np.array([float(done)])), (1, 1))])
+				                           np.reshape(np.float32(np.array([float(env.fell_down)])), (1, 1))])
 			state = next_state
 			total_frame += 1
+
 
 			# DONE FLAG IS Received
 			if done:
@@ -77,6 +82,11 @@ def rollout_worker(id, type, task_pipe, result_pipe, data_bucket, model_bucket, 
 				for entry in rollout_trajectory:
 					data_bucket.append(entry)
 				break
+
+			#Fitness Shaping
+			#fitness += sum(env.shaped_reward['crouch_bonus']) + sum(env.shaped_reward['knee_bend']) + sum(env.shaped_reward['vel_follower']) + env.fell_down * (-50.0) + env.istep
+
+
 
 		# Send back id, fitness, total length and shaped fitness using the result pipe
 		result_pipe.send([identifier, fitness, total_frame, env.istep, env.original_reward, env.shaped_reward['num_footsteps']])

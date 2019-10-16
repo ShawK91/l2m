@@ -64,7 +64,7 @@ class Parameters:
             self.scheme = vars(parser.parse_args())['scheme']
 
 
-        self.alpha = 0.2
+        self.alpha = vars(parser.parse_args())['alpha']
         self.autotune = vars(parser.parse_args())['autotune']
         self.target_update_interval = 1
         self.alpha_lr = 1e-3
