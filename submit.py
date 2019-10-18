@@ -3,10 +3,10 @@ from osim.http.client import Client
 import torch
 from models.constructor import ModelConstructor
 from core import utils
-from envs_repo.l2m import L2MRemote, L2M
+from envs_repo.l2m import L2MRemote, L2M, process_dict
 
 FRAMESKIP = 4
-seed = 'models_backup/r1/seed2_r1'
+seed = 'models_backup/r2/diff3_seed_T300'
 #seed = 'Results/Auxiliary/bestR1__sac_seed2019_roll10_diff3'
 model_constructor = ModelConstructor(169, 22, actor_seed=seed, critic_seed=None)
 net = model_constructor.make_model('Gaussian_FF', seed=True)
@@ -78,7 +78,7 @@ def test_locally():
         state = torch.Tensor(state)
         total_reward += reward
 
-        print('Seed', seed, 'Local Test', time, 'R1_Reward','%.2f' % env.r1_reward, 'Shaped_Reward','%.2f' % total_reward, utils.pprint(hack_action))
+        print('Seed', seed, 'Local Test', time, 'R1_Reward','%.2f' % env.original_reward, 'Shaped_Reward','%.2f' % total_reward, utils.pprint(hack_action))
 
         if done:
             break

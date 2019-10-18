@@ -33,7 +33,7 @@ class SAC(object):
             self.log_alpha = self.log_alpha.to(device=self.device)
 
 
-        self.actor = model_constructor.make_model('Gaussian_FF').to(device=self.device)
+        self.actor = model_constructor.make_model('Gaussian_FF', seed=True).to(device=self.device)
         self.actor_optim = Adam(self.actor.parameters(), lr=args.actor_lr, weight_decay=1e-4)
 
         # self.actor_target = model_constructor.make_model('actor')

@@ -13,11 +13,12 @@ class Parameters:
 
         #Env args
         self.env_name = vars(parser.parse_args())['env']
+        self.project = vars(parser.parse_args())['project']
         self.config = vars(parser.parse_args())['config']
         self.difficulty = vars(parser.parse_args())['difficulty']
         self.action_clamp = vars(parser.parse_args())['action_clamp']
         self.T = vars(parser.parse_args())['T']
-        self.env_args = get_env_args(self.env_name, self.difficulty, self.action_clamp, self.T)
+        self.env_args = get_env_args(self.env_name, self.difficulty, self.action_clamp, self.T, self.project)
         self.is_cerl = vars(parser.parse_args())['cerl']
 
 
@@ -81,7 +82,7 @@ class Parameters:
         self.savetag += '_seed' + str(self.seed)
         self.savetag += '_roll' + str(self.rollout_size)
         self.savetag += '_diff' + str(self.difficulty)
-        self.savetag += '_actionClamp' if self.action_clamp else ''
+        self.savetag += '_project' if self.project else ''
         self.savetag += '_entropyAuto' if self.autotune and self.algo == 'sac' else ''
         self.savetag += '_T' + str(self.T)
 
@@ -92,20 +93,20 @@ class Parameters:
             self.savetag += '_portfolio' + str(self.portfolio_id)
             self.savetag += '_scheme_' + self.scheme
 
-def get_env_args(env_name, difficulty, action_clamp, T):
+def get_env_args(env_name, difficulty, action_clamp, T, project):
     args = {}
     if env_name == 'l2m':
 
         args['visualize'] = False
         args['integrator_accuracy'] = 5e-5
-        args['frameskip'] = 4
+        args['frameskip'] = 5
         args['T'] = T
         args['difficulty'] = difficulty
         args['action_clamp'] = action_clamp
+        args['project'] = project
 
-
-    if env_name == 'gym':
-        args['frameskip'] = 1
+    else:
+        raise ('Wrong Env')
 
 
 

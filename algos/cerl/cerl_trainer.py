@@ -50,8 +50,10 @@ class CERL_Trainer:
 
 		#Initialize population
 		self.population = self.manager.list()
+		seed = True
 		for _ in range(args.pop_size):
-			self.population.append(model_constructor.make_model(self.policy_string))
+			self.population.append(model_constructor.make_model(self.policy_string, seed=seed))
+			seed=False
 
 		#SEED
 		#self.population[0].load_state_dict(torch.load('Results/Auxiliary/_bestcerl_td3_s2019_roll10_pop10_portfolio10'))
@@ -207,11 +209,7 @@ class CERL_Trainer:
 		if self.args.pop_size > 1:
 			champ_index = all_net_ids[all_fitness.index(max(all_fitness))]
 			utils.hard_update(self.test_bucket[0], self.population[champ_index])
-			if max(all_fitness) > self.best_score:
-				self.best_score = max(all_fitness)
-				utils.hard_update(self.best_policy, self.population[champ_index])
-				torch.save(self.population[champ_index].state_dict(), self.args.aux_folder + '_bestShaped'+self.args.savetag)
-				print("Best policy saved with score", '%.2f'%max(all_fitness))
+
 
 		else: #Run PG in isolation
 			utils.hard_update(self.test_bucket[0], self.rollout_bucket[0])
@@ -233,11 +231,18 @@ class CERL_Trainer:
 			self.num_footsteps = np.mean(np.array(num_footsteps))
 			self.ep_len = np.mean(np.array(eplens))
 			self.r1_reward = np.mean(np.array(r1_reward))
+
 			if self.r1_reward > self.best_r1_score:
 				self.best_r1_score = self.r1_reward
-				utils.hard_update(self.best_policy, self.population[champ_index])
-				torch.save(self.population[champ_index].state_dict(), self.args.aux_folder + '_bestR1_'+self.args.savetag)
+				utils.hard_update(self.best_policy, self.test_bucket[0])
+				torch.save(self.test_bucket[0].state_dict(), self.args.aux_folder + '_bestR1_'+self.args.savetag)
 				print("Best R2 policy saved with score", '%.2f'%self.r1_reward)
+
+			if test_mean > self.best_score:
+				self.best_score = test_mean
+				utils.hard_update(self.best_policy, self.test_bucket[0])
+				torch.save(self.test_bucket[0].state_dict(), self.args.aux_folder + '_bestShaped'+self.args.savetag)
+				print("Best Shaped policy saved with score", '%.2f'%test_mean)
 
 			tracker.update([test_mean, self.r1_reward], self.total_frames)
 

@@ -14,7 +14,7 @@ class ModelConstructor:
         """
         self.state_dim = state_dim
         self.action_dim = action_dim
-        self.actor_seed = 'model_backup/r2/r2_init'
+        self.actor_seed = actor_seed
         self.critic_seed = critic_seed
 
 
@@ -33,9 +33,11 @@ class ModelConstructor:
         elif type == 'Gaussian_FF':
             from models.feedforward import Gaussian_FF
             model = Gaussian_FF(self.state_dim, self.action_dim)
-            if seed:
-                model.load_state_dict(torch.load(self.actor_seed))
+            if seed and self.actor_seed != None:
+                model.load_state_dict(torch.load(self.actor_seed, map_location='cuda'))
+                #model.load_state_dict(torch.load(self.actor_seed))
                 print('Actor seeded from', self.actor_seed)
+                model = Gaussian_FF(self.state_dim, self.action_dim)
 
         elif type == 'Gumbel_FF':
             from models.feedforward import Gumbel_FF
@@ -47,9 +49,9 @@ class ModelConstructor:
         elif type == 'Tri_Head_Q':
             from models.feedforward import Tri_Head_Q
             model = Tri_Head_Q(self.state_dim, self.action_dim)
-            if seed:
-                model.load_state_dict(torch.load(self.critic_seed))
-                print('Critic seeded from', self.critic_seed)
+            # if seed:
+            #     model.load_state_dict(torch.load(self.critic_seed))
+            #     print('Critic seeded from', self.critic_seed)
 
 
         elif type == 'DDQN':

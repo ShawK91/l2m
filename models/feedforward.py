@@ -274,11 +274,12 @@ class Gaussian_FF(nn.Module):
 
         self.stochastic = is_stochastic
         self.num_actions = num_actions
+        self.obs_dim = num_inputs - 72
         h1=256; h2 =200; g1 = 80; g2 = 40
 
 
         #Goal+Feature Processor
-        self.feature1 = nn.Linear(97, h1)
+        self.feature1 = nn.Linear(self.obs_dim, h1)
         self.goal1 = nn.Linear(72, g1)
         self.goal2 = nn.Linear(g1, g2)
 
@@ -315,10 +316,10 @@ class Gaussian_FF(nn.Module):
 
 
         #Goal+Feature Processor
-        obs = self.feature1(state[:,0:97])
+        obs = self.feature1(state[:,0:self.obs_dim])
         obs = torch.selu(obs)
 
-        dict = self.goal1(state[:,97:])
+        dict = self.goal1(state[:,self.obs_dim:])
         dict = torch.selu(dict)
         dict = self.goal2(dict)
         dict = torch.selu(dict)
@@ -394,10 +395,11 @@ class Tri_Head_Q(nn.Module):
     def __init__(self, state_dim, action_dim):
         super(Tri_Head_Q, self).__init__()
         l1 = 256; l2 = 256; g1 = 80; g2 = 40
+        self.obs_dim = state_dim - 72
 
 
         #Goal+Feature Processor
-        self.feature1 = nn.Linear(97, l1)
+        self.feature1 = nn.Linear(self.obs_dim, l1)
         self.goal1 = nn.Linear(72, g1)
         self.goal2 = nn.Linear(g1, g2)
 
@@ -466,10 +468,10 @@ class Tri_Head_Q(nn.Module):
 
          """
         #Goal+Feature Processor
-        obs = self.feature1(inp[:,0:97])
+        obs = self.feature1(inp[:,0:self.obs_dim])
         obs = torch.selu(obs)
 
-        dict = self.goal1(inp[:,97:])
+        dict = self.goal1(inp[:,self.obs_dim:])
         dict = torch.selu(dict)
         dict = self.goal2(dict)
         dict = torch.selu(dict)

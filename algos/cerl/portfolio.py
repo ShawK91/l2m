@@ -52,10 +52,12 @@ def initialize_portfolio(portfolio, args, genealogy, portfolio_id, model_constru
 		# Learner 1
 		portfolio.append(
 			Learner(model_constructor, args, 'sac', 0.92, **sac_specific))
+		portfolio[-1].algo.actor.stochastic = True
 
 		# Learner 2
 		portfolio.append(
 			Learner(model_constructor, args, 'sac', 0.97, **sac_specific))
+		portfolio[-1].algo.actor.stochastic = True
 
 		sac_specific['entropy'] = False
 		sac_specific['autotune'] = False

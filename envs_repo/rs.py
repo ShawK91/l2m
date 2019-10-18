@@ -1,4 +1,4 @@
-import numpy as np
+
 
 
 import numpy as np
@@ -11,7 +11,7 @@ def crouch(pelvis_y):
             r (float): reward within the range (0.0,1.0) based on percent of timeseteps that the constraint was satisfied
     """
 
-    r = pelvis_y < 0.8
+    r = pelvis_y < 0.85
     return r
 
 def knee_bend(ltibia_angle, lfemur_angle, rtibia_angle, rfemur_angle):
@@ -38,8 +38,11 @@ def vel_follower(self): # for L2M2019 Round 2
     v_body = [state_desc['body_vel']['pelvis'][0], -state_desc['body_vel']['pelvis'][2]]
     v_tgt = self.vtgt.get_vtgt(p_body).T
 
-    r = -np.linalg.norm(v_body - v_tgt)
-    return r
+    x_penalty = -abs(v_tgt[0,0]-v_body[0])
+    z_penalty = -abs(v_tgt[0,1]-v_body[1])
+
+    #r = -np.linalg.norm(v_body - v_tgt)
+    return x_penalty, z_penalty
 
 ################# ROUND 2 BRS #######################
 

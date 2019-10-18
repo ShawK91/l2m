@@ -52,8 +52,9 @@ parser.add_argument('--portfolio', type=int, help='Portfolio ID',  default=-1)
 
 parser.add_argument('--autotune', type=utils.str2bool, help='Autotune SAC entropy?',  default=True)
 parser.add_argument('--T', type=int, help='Time Length?',  default=300)
-parser.add_argument('--difficulty', type=int, help='Difficulty Level',  default=3)
+parser.add_argument('--difficulty', type=int, help='Difficulty Level',  default=0)
 parser.add_argument('--alpha', type=float, help='SAC Alpha',  default=0.3)
+parser.add_argument('--project', type=utils.str2bool, help='#Project OBS?',  default=False)
 
 USE_CERL = vars(parser.parse_args())['cerl']
 ALGO = vars(parser.parse_args())['algo']

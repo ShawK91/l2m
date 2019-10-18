@@ -21,7 +21,7 @@ from torch.multiprocessing import Process, Pipe, Manager
 import torch
 from core.buffer import Buffer
 from algos.sac.sac import SAC
-from torch.utils.tensorboard import SummaryWriter
+#from torch.utils.tensorboard import SummaryWriter
 
 
 
@@ -82,6 +82,7 @@ class SAC_Trainer:
 		self.ep_len = 0
 		self.r1_reward = 0
 		self.num_footsteps = 0
+		self.best_shaped_score = 0.0
 
 
 	def forward_epoch(self, epoch, tracker):
@@ -170,6 +171,11 @@ class SAC_Trainer:
 				torch.save(self.test_bucket[0].state_dict(), self.args.aux_folder + 'bestR1_' + self.args.savetag)
 				print("Best R2 Policy saved with score", '%.2f' %self.r1_reward)
 
+			if test_mean > self.best_shaped_score:
+				self.best_shaped_score = test_mean
+				torch.save(self.test_bucket[0].state_dict(), self.args.aux_folder + 'bestShaped_' + self.args.savetag)
+				print("Best Shaped Policy saved with score", '%.2f' %test_mean)
+
 		else:
 			test_mean, test_std = None, None
 
@@ -188,7 +194,7 @@ class SAC_Trainer:
 		# Define Tracker class to track scores
 		test_tracker = utils.Tracker(self.args.savefolder, ['shaped_' + self.args.savetag, 'r2_'+self.args.savetag], '.csv')  # Tracker class to log progress
 		grad_tracker = utils.Tracker(self.args.aux_folder, ['entropy_'+self.args.savetag, 'policyQ_'+self.args.savetag], '.csv')  # Tracker class to log progress
-		writer = SummaryWriter(self.args.savefolder)
+		#writer = SummaryWriter(self.args.savefolder)
 
 		time_start = time.time()
 

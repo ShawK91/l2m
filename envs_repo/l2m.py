@@ -25,7 +25,7 @@ class L2M:
 
 
     """
-    def __init__(self, visualize=False, integrator_accuracy=5e-5, frameskip=4, T=2500, action_clamp=False, difficulty=2):
+    def __init__(self, visualize=False, integrator_accuracy=5e-5, frameskip=4, T=2500, action_clamp=False, difficulty=2, project=True):
         """
         A base template for all environment wrappers.
         """
@@ -34,9 +34,10 @@ class L2M:
         self.frameskip=frameskip
         self.T=T; self.istep = 0
         self.action_clamp = action_clamp
+        self.project = project
 
         #Self Params
-        self.state_dim = 169
+        self.state_dim = 169 if self.project else 540
         self.action_dim = 22
         self.test_size = 1
 
@@ -44,7 +45,8 @@ class L2M:
         self.shaped_reward = {'num_footsteps':[],
                               'crouch_bonus':[],
                               'knee_bend':[],
-                              'vel_follower':[]}
+                              'x_penalty':[],
+                              'z_penalty':[]}
         self.original_reward = 0.0
         self.fell_down = False
 
@@ -70,7 +72,8 @@ class L2M:
         self.shaped_reward = {'num_footsteps':[],
                               'crouch_bonus':[],
                               'knee_bend':[],
-                              'vel_follower':[]}
+                              'x_penalty':[],
+                              'z_penalty':[]}
         self.original_reward = 0.0
         self.fell_down = False
 
@@ -83,7 +86,7 @@ class L2M:
         self.lfemur_angle = []; self.rfemur_angle = []
 
 
-        state_dict = self.env.reset()
+        state_dict = self.env.reset(project=self.project)
         self.update_vars()
         obs = flatten(state_dict)
         goal = state_dict['v_tgt_field']
@@ -119,7 +122,7 @@ class L2M:
         for _ in range(self.frameskip):
             self.istep += 1
 
-            next_state_dict, rew, done, info = self.env.step(bounded_action)
+            next_state_dict, rew, done, info = self.env.step(bounded_action, project=self.project)
 
             if self.istep > self.T: done = True
 
@@ -131,8 +134,11 @@ class L2M:
             #Fall Down?
             if self.pelvis['y'][-1] < 0.6: self.fell_down = True
 
+            #UnShaped Reward
             self.original_reward += rew
-            reward += rew #+ self.shaped_reward['crouch_bonus'][-1] + self.shaped_reward['knee_bend'][-1] + self.shaped_reward['vel_follower'][-1] + 1.0 + self.fell_down * (-5.0)
+
+
+            reward += 2.0 + self.shaped_reward['x_penalty'][-1] + 0.5 * self.shaped_reward['z_penalty'][-1]
             if done: break
 
 
@@ -189,7 +195,10 @@ class L2M:
 
         self.shaped_reward['knee_bend'].append(rs.knee_bend(self.ltibia_angle[-1], self.lfemur_angle[-1], self.rtibia_angle[-1], self.lfemur_angle[-1]))
 
-        self.shaped_reward['vel_follower'].append(rs.vel_follower(self.env))
+        x_pen, z_pen = rs.vel_follower(self.env)
+        self.shaped_reward['x_penalty'].append(x_pen)
+        self.shaped_reward['z_penalty'].append(z_pen)
+
 
 
 class L2MRemote:
