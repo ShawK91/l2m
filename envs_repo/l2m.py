@@ -14,7 +14,7 @@
 # limitations under the License.
 # ******************************************************************************
 import numpy as np
-from envs_repo import rs
+from envs_repo import rs, obs_wrapper
 
 
 class L2M:
@@ -37,14 +37,15 @@ class L2M:
         self.project = project
 
         #Self Params
-        self.state_dim = 169 if self.project else 540
+        self.state_dim = 169 if self.project else 228+72
         self.action_dim = 22
-        self.test_size = 1
+        self.test_size = 5
 
         #Trackers
         self.shaped_reward = {'num_footsteps':[],
                               'crouch_bonus':[],
                               'knee_bend':[],
+                              'toes_low': [],
                               'x_penalty':[],
                               'z_penalty':[]}
         self.original_reward = 0.0
@@ -72,6 +73,7 @@ class L2M:
         self.shaped_reward = {'num_footsteps':[],
                               'crouch_bonus':[],
                               'knee_bend':[],
+                              'toes_low': [],
                               'x_penalty':[],
                               'z_penalty':[]}
         self.original_reward = 0.0
@@ -88,15 +90,15 @@ class L2M:
 
         state_dict = self.env.reset(project=self.project)
         self.update_vars()
-        obs = flatten(state_dict)
+        if self.project: obs = flatten(state_dict)
+        else: obs = obs_wrapper.shape_observation(state_dict)
+
         goal = state_dict['v_tgt_field']
         goal = goal[:, 0::2, 0::2].flatten()
         state = np.concatenate((obs, goal))
         state = np.expand_dims(state, 0)
 
-        if check_nan_inf(state):
-            print(state)
-            raise Exception ('Nan or Inf encountered')
+
 
         return state
 
@@ -138,13 +140,24 @@ class L2M:
             self.original_reward += rew
 
 
-            reward += 2.0 + self.shaped_reward['x_penalty'][-1] + 0.5 * self.shaped_reward['z_penalty'][-1]
+            reward += 2.0 + \
+                      1.0 * self.shaped_reward['x_penalty'][-1] + \
+                      0.2 * self.shaped_reward['z_penalty'][-1] + \
+                      0.2 * self.shaped_reward['knee_bend'][-1] + \
+                      0.5 * self.shaped_reward['crouch_bonus'][-1] + \
+                      0.3 * self.shaped_reward['toes_low'][-1] +\
+                      -10.0 * self.fell_down
+
             if done: break
 
 
-        next_obs = flatten(next_state_dict)
+
+        if self.project: next_obs = flatten(next_state_dict)
+        else: next_obs = obs_wrapper.shape_observation(next_state_dict)
+
         next_goal = next_state_dict['v_tgt_field']
         next_goal = next_goal[:, 0::2, 0::2].flatten()
+
         next_state = np.concatenate((next_obs, next_goal))
         next_state = np.expand_dims(next_state, 0)
 
@@ -194,6 +207,10 @@ class L2M:
 
 
         self.shaped_reward['knee_bend'].append(rs.knee_bend(self.ltibia_angle[-1], self.lfemur_angle[-1], self.rtibia_angle[-1], self.lfemur_angle[-1]))
+
+        self.shaped_reward['toes_low'].append(rs.toes_low(self.ltoes['y'][-1], self.rtoes['y'][-1]))
+
+
 
         x_pen, z_pen = rs.vel_follower(self.env)
         self.shaped_reward['x_penalty'].append(x_pen)

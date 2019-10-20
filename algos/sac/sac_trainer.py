@@ -110,7 +110,7 @@ class SAC_Trainer:
 				self.roll_flag[rollout_id] = False
 
 		#Start Test rollouts
-		if epoch % 1 == 0:
+		if epoch % 5 == 0:
 			self.test_flag = True
 			for pipe in self.test_task_pipes: pipe[0].send(0)
 
@@ -205,7 +205,7 @@ class SAC_Trainer:
 
 			print('Gen/Frames', gen,'/',self.total_frames, 'max_ever:','%.2f'%self.best_score, ' Avg:','%.2f'%test_tracker.all_tracker[0][1],
 		      ' Frames/sec:','%.2f'%(self.total_frames/(time.time()-time_start)),
-			   ' Test/RolloutScore', '%.2f'%self.test_trace[-1], '%.2f'% self.rollout_fits_trace[-1],
+			   ' Test/RolloutScore', '%.2f'%self.test_trace[-1] if len(self.test_trace)>0 else None, '%.2f'% self.rollout_fits_trace[-1],
 				  'Ep_len', '%.2f'%self.ep_len, '#Footsteps', '%.2f'%self.num_footsteps, 'R2_Reward', '%.2f'%self.r1_reward,
 				  'savetag', self.args.savetag)
 

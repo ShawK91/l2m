@@ -158,7 +158,7 @@ class CERL_Trainer:
 				self.roll_flag[rollout_id] = False
 
 		#Start Test rollouts
-		if gen % 1 == 0:
+		if gen % 5 == 0:
 			self.test_flag = True
 			for pipe in self.test_task_pipes: pipe[0].send(0)
 

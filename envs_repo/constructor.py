@@ -27,13 +27,10 @@ class EnvConstructor:
 
         if self.name == 'l2m':
             from envs_repo.l2m import L2M
-            env = L2M(self.kwargs['visualize'], self.kwargs['integrator_accuracy'], self.kwargs['frameskip'], self.kwargs['T'], self.kwargs['action_clamp'], difficulty=self.kwargs['difficulty'])
+            env = L2M(self.kwargs['visualize'], self.kwargs['integrator_accuracy'], self.kwargs['frameskip'], self.kwargs['T'], self.kwargs['action_clamp'], difficulty=self.kwargs['difficulty'], project=self.kwargs['project'])
             return env
 
-        if self.name == 'gym':
-            from envs_repo.gym import GymWrapper
-            env = GymWrapper(self.config, self.kwargs['frameskip'])
-            return env
+
 
 
 

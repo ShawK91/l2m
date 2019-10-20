@@ -99,7 +99,7 @@ def get_env_args(env_name, difficulty, action_clamp, T, project):
 
         args['visualize'] = False
         args['integrator_accuracy'] = 5e-5
-        args['frameskip'] = 5
+        args['frameskip'] = 4
         args['T'] = T
         args['difficulty'] = difficulty
         args['action_clamp'] = action_clamp

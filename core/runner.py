@@ -86,9 +86,12 @@ def rollout_worker(id, type, task_pipe, result_pipe, data_bucket, model_bucket, 
 
                 #Fitness Shaping
                 #fitness += sum(env.shaped_reward['crouch_bonus']) + sum(env.shaped_reward['knee_bend']) + sum(env.shaped_reward['vel_follower']) + env.fell_down * (-50.0) + env.istep
-                fitness = fitness + \
-                          0.5 * sum(env.shaped_reward['crouch_bonus']) \
-                          + sum(env.shaped_reward['knee_bend'])
+                # fitness = fitness + \
+                #           2.0 * self.shaped_reward['x_penalty'][-1] + \
+                #           0.2 * self.shaped_reward['z_penalty'][-1] + \
+                #           0.2 * self.shaped_reward['knee_bend'][-1] + \
+                #           0.5 * self.shaped_reward['crouch_bonus'][-1] + \
+                #           0.3 * self.shaped_reward['toes_low'][-1]
 
                           #+ sum(env.shaped_reward['x_penalty']) \
                           #+ 0.5 * sum(env.shaped_reward['z_penalty'])

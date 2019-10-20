@@ -38,11 +38,25 @@ def vel_follower(self): # for L2M2019 Round 2
     v_body = [state_desc['body_vel']['pelvis'][0], -state_desc['body_vel']['pelvis'][2]]
     v_tgt = self.vtgt.get_vtgt(p_body).T
 
-    x_penalty = -abs(v_tgt[0,0]-v_body[0])
-    z_penalty = -abs(v_tgt[0,1]-v_body[1])
+    x_penalty = -(v_tgt[0,0]-v_body[0])**2
+    z_penalty = -(v_tgt[0,1]-v_body[1])**2
 
     #r = -np.linalg.norm(v_body - v_tgt)
     return x_penalty, z_penalty
+
+
+def toes_low(ltoe, rtoe):
+    """foot is not raised too high
+        Parameters:
+            lfoot (ndarray): left foot positions in y
+            rfoot (ndarray): right foot positions in y
+        Returns:
+            r (float): continous reward based on degree that the constraint was satisfied
+    """
+
+    r = ltoe < 0.3 and rtoe < 0.3
+    return float(r)
+
 
 ################# ROUND 2 BRS #######################
 
@@ -79,15 +93,6 @@ def pelvis_swing(pel_v, use_synthetic_targets, phase_len):
 
     return r
 
-
-
-
-
-
-
-
-
-####################### ROUND 1 BRS #################
 
 def knee_bend_trajectory(ltibia_angle, lfemur_angle, rtibia_angle, rfemur_angle):
     """knee remains bend
